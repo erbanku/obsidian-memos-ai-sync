@@ -3,7 +3,7 @@
   "name": "Memos AI Sync+",
   "version": "1.0.5",
   "minAppVersion": "1.4.0",
-  "description": "Sync Memos (v0.21 and earlier) notes to Obsidian with optional AI enhancement.",
+  "description": "Sync Memos (v0.21 and earlier) notes with optional AI enhancement.",
   "author": "erbanku",
   "authorUrl": "https://github.com/erbanku",
   "isDesktopOnly": false
