@@ -6620,15 +6620,15 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian2.Setting(containerEl).setName("Memos URL").setDesc("Memos server base URL, e.g. https://demo.usememos.com/").addText((text) => text.setPlaceholder("https://demo.usememos.com/").setValue(this.plugin.settings.memosApiUrl).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Memos URL").setDesc("Memos server base URL").addText((text) => text.setPlaceholder("https://demo.usememos.com/").setValue(this.plugin.settings.memosApiUrl).onChange(async (value) => {
       this.plugin.settings.memosApiUrl = value.trim();
       await this.plugin.saveSettings();
     }));
-    new import_obsidian2.Setting(containerEl).setName("Access token").setDesc("Your Memos API access token").addText((text) => text.setPlaceholder("Enter access token").setValue(this.plugin.settings.memosAccessToken).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Access token").setDesc("Your memos API access token").addText((text) => text.setPlaceholder("Enter access token").setValue(this.plugin.settings.memosAccessToken).onChange(async (value) => {
       this.plugin.settings.memosAccessToken = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian2.Setting(containerEl).setName("Sync directory").setDesc("Folder in Obsidian where Memos content will be stored").addText((text) => text.setPlaceholder("e.g. memos").setValue(this.plugin.settings.syncDirectory).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Sync directory").setDesc("Folder in Obsidian where memos content will be stored").addText((text) => text.setPlaceholder("Memos").setValue(this.plugin.settings.syncDirectory).onChange(async (value) => {
       this.plugin.settings.syncDirectory = value;
       await this.plugin.saveSettings();
     }));
@@ -6638,7 +6638,7 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
       this.display();
     }));
     if (this.plugin.settings.syncFrequency === "auto") {
-      new import_obsidian2.Setting(containerEl).setName("Sync interval").setDesc("Interval between automatic syncs (minutes)").addText((text) => text.setPlaceholder("e.g. 30").setValue(String(this.plugin.settings.autoSyncInterval)).onChange(async (value) => {
+      new import_obsidian2.Setting(containerEl).setName("Sync interval").setDesc("Interval between automatic syncs (minutes)").addText((text) => text.setPlaceholder("30").setValue(String(this.plugin.settings.autoSyncInterval)).onChange(async (value) => {
         const interval = Number.parseInt(value, 10);
         if (Number.isFinite(interval) && interval > 0) {
           this.plugin.settings.autoSyncInterval = interval;
@@ -6653,7 +6653,7 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
         await this.plugin.saveSettings();
       }
     }));
-    new import_obsidian2.Setting(containerEl).setName("Sync after date").setDesc("Only sync memos created on or after this date (YYYY-MM-DD). Leave empty to sync all.").addText((text) => text.setPlaceholder("2024-01-01").setValue(this.plugin.settings.syncAfter).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Sync after date").setDesc("Only sync memos created on or after this date (yyyy-mm-dd). Leave empty to sync all.").addText((text) => text.setPlaceholder("2024-01-01").setValue(this.plugin.settings.syncAfter).onChange(async (value) => {
       this.plugin.settings.syncAfter = value.trim();
       await this.plugin.saveSettings();
     }));
@@ -6709,7 +6709,7 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
         });
       });
       if (this.plugin.settings.ai.modelName === "custom") {
-        new import_obsidian2.Setting(containerEl).setName("Custom model name").setDesc("Enter the name of the custom model").addText((text) => text.setPlaceholder("e.g. gemini-pro-latest").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
+        new import_obsidian2.Setting(containerEl).setName("Custom model name").setDesc("Enter the name of the custom model").addText((text) => text.setPlaceholder("E.g. Gemini-pro-latest").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
           this.plugin.settings.ai.customModelName = value;
           await this.plugin.saveSettings();
         }));
@@ -6728,18 +6728,18 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
         });
       });
       if (this.plugin.settings.ai.modelName === "custom") {
-        new import_obsidian2.Setting(containerEl).setName("Custom model name").setDesc("Enter the name of the custom model").addText((text) => text.setPlaceholder("e.g. gpt-4-1106-preview").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
+        new import_obsidian2.Setting(containerEl).setName("Custom model name").setDesc("Enter the name of the custom model").addText((text) => text.setPlaceholder("E.g. GPT-4-1106-preview").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
           this.plugin.settings.ai.customModelName = value;
           await this.plugin.saveSettings();
         }));
-        new import_obsidian2.Setting(containerEl).setName("OpenAI API base URL").setDesc("Base URL for custom API services").addText((text) => text.setPlaceholder("https://api.openai.com/v1").setValue(this.plugin.settings.ai.openaiBaseUrl || "https://api.openai.com/v1").onChange(async (value) => {
+        new import_obsidian2.Setting(containerEl).setName("OpenAI API base URL").setDesc("Base URL for custom API services").addText((text) => text.setPlaceholder("HTTPS://api.OpenAI.com/v1").setValue(this.plugin.settings.ai.openaiBaseUrl || "https://api.openai.com/v1").onChange(async (value) => {
           this.plugin.settings.ai.openaiBaseUrl = value;
           await this.plugin.saveSettings();
         }));
       }
     } else if (modelType === "claude") {
       new import_obsidian2.Setting(containerEl).setName("Claude model").setDesc("Select the Claude model to use").addDropdown((dropdown) => {
-        dropdown.addOption("claude-3-opus-20240229", "Claude 3 Opus").addOption("claude-3-sonnet-20240229", "Claude 3 Sonnet").addOption("claude-3-haiku-20240307", "Claude 3 Haiku").addOption("custom", "Custom model");
+        dropdown.addOption("claude-3-opus-20240229", "Claude 3 opus").addOption("claude-3-sonnet-20240229", "Claude 3 sonnet").addOption("claude-3-haiku-20240307", "Claude 3 haiku").addOption("custom", "Custom model");
         const currentModel = this.plugin.settings.ai.modelName || "claude-3-opus-20240229";
         dropdown.setValue(currentModel);
         dropdown.onChange(async (value) => {
@@ -6749,17 +6749,17 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
         });
       });
       if (this.plugin.settings.ai.modelName === "custom") {
-        new import_obsidian2.Setting(containerEl).setName("Custom model name").setDesc("Enter the name of the custom model").addText((text) => text.setPlaceholder("e.g. claude-3-opus-next").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
+        new import_obsidian2.Setting(containerEl).setName("Custom model name").setDesc("Enter the name of the custom model").addText((text) => text.setPlaceholder("E.g. Claude-3-opus-next").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
           this.plugin.settings.ai.customModelName = value;
           await this.plugin.saveSettings();
         }));
       }
     } else if (modelType === "ollama") {
-      new import_obsidian2.Setting(containerEl).setName("Ollama base URL").setDesc("Base URL for the Ollama service (default: http://localhost:11434)").addText((text) => text.setPlaceholder("http://localhost:11434").setValue(this.plugin.settings.ai.ollamaBaseUrl).onChange(async (value) => {
+      new import_obsidian2.Setting(containerEl).setName("Ollama base URL").setDesc("Base URL for the ollama service (default: http://localhost:11434)").addText((text) => text.setPlaceholder("HTTP://localhost:11434").setValue(this.plugin.settings.ai.ollamaBaseUrl).onChange(async (value) => {
         this.plugin.settings.ai.ollamaBaseUrl = value;
         await this.plugin.saveSettings();
       }));
-      new import_obsidian2.Setting(containerEl).setName("Ollama model").setDesc("Select the Ollama model to use").addDropdown((dropdown) => {
+      new import_obsidian2.Setting(containerEl).setName("Ollama model").setDesc("Select the ollama model to use").addDropdown((dropdown) => {
         for (const [displayName, modelId] of Object.entries(OLLAMA_MODELS)) {
           if (typeof modelId === "string") {
             dropdown.addOption(modelId, `${displayName} - ${MODEL_DESCRIPTIONS[modelId] || modelId}`);
@@ -6775,7 +6775,7 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
         });
       });
       if (this.plugin.settings.ai.modelName === "custom") {
-        new import_obsidian2.Setting(containerEl).setName("Custom model name").setDesc("Enter the name of the custom model").addText((text) => text.setPlaceholder("e.g. llama2:13b").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
+        new import_obsidian2.Setting(containerEl).setName("Custom model name").setDesc("Enter the name of the custom model").addText((text) => text.setPlaceholder("E.g. Llama2:13b").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
           this.plugin.settings.ai.customModelName = value;
           await this.plugin.saveSettings();
         }));
