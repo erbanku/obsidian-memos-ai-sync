@@ -2,6 +2,6 @@
     "id": "memos-ai-sync-plus",
     "name": "Memos AI Sync+",
     "author": "erbanku",
-    "description": "Sync Memos content with AI enhancement",
-    "repo": "erbanku/obsidian-memos-ai-sync-plus"
+    "description": "Sync Memos (v0.21 and earlier) notes to Obsidian with optional AI enhancement",
+    "repo": "erbanku/obsidian-memos-ai-sync"
 }
