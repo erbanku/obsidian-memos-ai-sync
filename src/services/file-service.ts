@@ -1,6 +1,6 @@
 import { TFile } from 'obsidian';
 import type { Vault } from 'obsidian';
-import type { MemoItem, MemoResource } from '../models/settings';
+import type { MemoItem } from '../models/settings';
 import type { MemosService } from './memos-service';
 import { Logger } from './logger';
 
@@ -214,4 +214,3 @@ export class FileService {
         }
     }
 }
-

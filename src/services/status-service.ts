@@ -17,44 +17,44 @@ export class StatusService {
     private updateStatusBar() {
         let icon: string;
         let text: string;
-        
+
         switch (this.currentStatus) {
             case 'syncing': {
                 icon = 'sync';
                 const progress = this.totalCount ? ` ${this.progressCount}/${this.totalCount}` : '';
                 const elapsed = this.syncStartTime ? ` (${Math.round((Date.now() - this.syncStartTime) / 1000)}s)` : '';
-                text = `同步中${progress}${elapsed}`;
+                text = `Syncing${progress}${elapsed}`;
                 break;
             }
             case 'error': {
                 icon = 'alert-circle';
-                text = '同步失败';
+                text = 'Sync failed';
                 break;
             }
             case 'success': {
                 icon = 'check-circle';
-                text = '同步完成';
+                text = 'Sync complete';
                 break;
             }
             case 'warning': {
                 icon = 'alert-triangle';
-                text = '警告';
+                text = 'Warning';
                 break;
             }
             default: {
                 icon = 'clock';
-                text = '等待同步';
+                text = 'Idle';
             }
         }
 
         // 清空状态栏
         this.statusBarItem.innerHTML = '';
-        
+
         // 创建图标元素
         const iconSpan = document.createElement('span');
         this.statusBarItem.appendChild(iconSpan);
         setIcon(iconSpan, icon);
-        
+
         // 创建文本元素
         const textSpan = document.createElement('span');
         textSpan.textContent = ` ${text}`;
@@ -67,7 +67,7 @@ export class StatusService {
         this.progressCount = 0;
         this.totalCount = totalItems;
         this.updateStatusBar();
-        new Notice('开始同步 Memos');
+        new Notice('Syncing memos');
     }
 
     updateProgress(current: number, message?: string) {
@@ -89,7 +89,7 @@ export class StatusService {
         this.currentStatus = 'success';
         this.updateStatusBar();
         new Notice(message);
-        
+
         // 5秒后重置状态为空闲
         setTimeout(() => {
             this.currentStatus = 'idle';
@@ -107,11 +107,11 @@ export class StatusService {
         this.updateStatusBar();
         new Notice(message, 5000);
         console.warn('Warning:', message);
-        
+
         // 5秒后重置状态为空闲
         setTimeout(() => {
             this.currentStatus = 'idle';
             this.updateStatusBar();
         }, 5000);
     }
-} 
+}

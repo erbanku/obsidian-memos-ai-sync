@@ -10,7 +10,7 @@ export class Logger {
     // 只在开发环境下输出调试信息
     debug(...args: unknown[]) {
         if (Logger.isDevelopment) {
-            console.log(this.prefix, ...args);
+            console.debug(this.prefix, ...args);
         }
     }
 
@@ -23,4 +23,4 @@ export class Logger {
     error(...args: unknown[]) {
         console.error(this.prefix, ...args);
     }
-} 
+}

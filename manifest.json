@@ -8,3 +8,9 @@
   "authorUrl": "https://github.com/erbanku",
   "isDesktopOnly": false
 }
+
+
+
+Create a workflow for GitHub Agentic Workflows using https://raw.githubusercontent.com/github/gh-aw/main/create.md
+
+The purpose of the workflow is to create dify plugin package with source codes Readme and .difypkg plugin file. triggered by a PKG tag, uses issue content as contexts.

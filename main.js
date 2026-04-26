@@ -6172,7 +6172,7 @@ var _Logger = class _Logger {
   // 只在开发环境下输出调试信息
   debug(...args) {
     if (_Logger.isDevelopment) {
-      console.log(this.prefix, ...args);
+      console.debug(this.prefix, ...args);
     }
   }
   // 警告信息，生产环境也会输出
@@ -6274,15 +6274,16 @@ var GeminiService = class {
     this.model = genAI.getGenerativeModel({ model: modelName || GEMINI_MODELS["Gemini 1.5 Flash"] });
     this.logger = new Logger("GeminiService");
   }
-  async initialize(apiKey, modelName) {
+  initialize(apiKey, modelName) {
     this.logger.debug("Gemini \u670D\u52A1\u521D\u59CB\u5316\u6210\u529F\uFF0C\u4F7F\u7528\u6A21\u578B:", this.model);
+    return Promise.resolve();
   }
-  async handleRateLimit(error, retryCount) {
+  handleRateLimit(error, retryCount) {
     const delay = Math.min(1e3 * 2 ** retryCount, 3e4);
     this.logger.warn(`\u914D\u989D\u9650\u5236\uFF0C\u7B49\u5F85 ${delay}ms \u540E\u91CD\u8BD5...`);
     return delay;
   }
-  async handleError(error, retryCount) {
+  handleError(error, retryCount) {
     const delay = Math.min(1e3 * 2 ** retryCount, 3e4);
     this.logger.error(`\u64CD\u4F5C\u5931\u8D25\uFF0C\u7B49\u5F85 ${delay}ms \u540E\u91CD\u8BD5...`, error);
     return delay;
@@ -6293,7 +6294,7 @@ var GeminiService = class {
 ${content}`;
     return retryWithBackoff(async () => {
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       return response.text().trim();
     });
   }
@@ -6303,7 +6304,7 @@ ${content}`;
 ${content}`;
     return retryWithBackoff(async () => {
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       return response.text().split(/[,，\s]+/).filter(Boolean);
     });
   }
@@ -6319,14 +6320,14 @@ ${content}`;
 ${combinedContent}`;
     return retryWithBackoff(async () => {
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       return response.text().trim();
     });
   }
 };
 var OpenAIService = class {
   // 生成随机 IV
-  async generateIV() {
+  generateIV() {
     return crypto.getRandomValues(new Uint8Array(12));
   }
   // 生成加密密钥
@@ -6342,7 +6343,7 @@ var OpenAIService = class {
   }
   // 加密 API 密钥
   async encryptApiKey(apiKey) {
-    const iv = await this.generateIV();
+    const iv = this.generateIV();
     const key = await this.generateKey();
     const encodedText = new TextEncoder().encode(apiKey);
     const encryptedData = await crypto.subtle.encrypt(
@@ -6415,7 +6416,7 @@ var OpenAIService = class {
       });
       try {
         await this.client.models.list();
-      } catch (error) {
+      } catch (e) {
         throw new Error("API \u5BC6\u94A5\u9A8C\u8BC1\u5931\u8D25");
       }
       this.model = modelName || OPENAI_MODELS["GPT-4o"];
@@ -6486,15 +6487,16 @@ var OllamaService = class {
     this.model = modelName || OLLAMA_MODELS["Llama 2"];
     this.logger = new Logger("OllamaService");
   }
-  async initialize(apiKey, modelName) {
+  initialize(apiKey, modelName) {
     this.logger.debug("Ollama \u670D\u52A1\u521D\u59CB\u5316\u6210\u529F\uFF0C\u4F7F\u7528\u6A21\u578B:", this.model);
+    return Promise.resolve();
   }
-  async handleRateLimit(error, retryCount) {
+  handleRateLimit(error, retryCount) {
     const delay = Math.min(1e3 * 2 ** retryCount, 3e4);
     this.logger.warn(`\u914D\u989D\u9650\u5236\uFF0C\u7B49\u5F85 ${delay}ms \u540E\u91CD\u8BD5...`);
     return delay;
   }
-  async handleError(error, retryCount) {
+  handleError(error, retryCount) {
     const delay = Math.min(1e3 * 2 ** retryCount, 3e4);
     this.logger.error(`\u64CD\u4F5C\u5931\u8D25\uFF0C\u7B49\u5F85 ${delay}ms \u540E\u91CD\u8BD5...`, error);
     return delay;
@@ -6590,20 +6592,21 @@ function createAIService(type, apiKey, modelName, openaiBaseUrl) {
 function createDummyAIService() {
   const logger = new Logger("DummyAIService");
   return {
-    async generateSummary() {
+    generateSummary() {
       logger.debug("\u4F7F\u7528\u7A7A AI \u670D\u52A1");
-      return "";
+      return Promise.resolve("");
     },
-    async generateTags() {
+    generateTags() {
       logger.debug("\u4F7F\u7528\u7A7A AI \u670D\u52A1");
-      return [];
+      return Promise.resolve([]);
     },
-    async generateWeeklyDigest() {
+    generateWeeklyDigest() {
       logger.debug("\u4F7F\u7528\u7A7A AI \u670D\u52A1");
-      return "";
+      return Promise.resolve("");
     },
-    async initialize() {
+    initialize() {
       logger.debug("\u521D\u59CB\u5316\u7A7A AI \u670D\u52A1");
+      return Promise.resolve();
     }
   };
 }
@@ -6621,21 +6624,21 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
       this.plugin.settings.memosApiUrl = value.trim();
       await this.plugin.saveSettings();
     }));
-    new import_obsidian2.Setting(containerEl).setName("\u8BBF\u95EE\u4EE4\u724C").setDesc("\u60A8\u7684 Memos API \u8BBF\u95EE\u4EE4\u724C").addText((text) => text.setPlaceholder("\u8F93\u5165\u8BBF\u95EE\u4EE4\u724C").setValue(this.plugin.settings.memosAccessToken).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Access token").setDesc("Your Memos API access token").addText((text) => text.setPlaceholder("Enter access token").setValue(this.plugin.settings.memosAccessToken).onChange(async (value) => {
       this.plugin.settings.memosAccessToken = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian2.Setting(containerEl).setName("\u540C\u6B65\u76EE\u5F55").setDesc("Memos \u5185\u5BB9\u5728 Obsidian \u4E2D\u7684\u5B58\u50A8\u4F4D\u7F6E").addText((text) => text.setPlaceholder("\u4F8B\u5982\uFF1Amemos").setValue(this.plugin.settings.syncDirectory).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Sync directory").setDesc("Folder in Obsidian where Memos content will be stored").addText((text) => text.setPlaceholder("e.g. memos").setValue(this.plugin.settings.syncDirectory).onChange(async (value) => {
       this.plugin.settings.syncDirectory = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian2.Setting(containerEl).setName("\u540C\u6B65\u6A21\u5F0F").setDesc("\u9009\u62E9\u624B\u52A8\u540C\u6B65\u6216\u81EA\u52A8\u540C\u6B65").addDropdown((dropdown) => dropdown.addOption("manual", "\u624B\u52A8\u540C\u6B65").addOption("auto", "\u81EA\u52A8\u540C\u6B65").setValue(this.plugin.settings.syncFrequency).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Sync mode").setDesc("Choose manual or automatic sync").addDropdown((dropdown) => dropdown.addOption("manual", "Manual").addOption("auto", "Automatic").setValue(this.plugin.settings.syncFrequency).onChange(async (value) => {
       this.plugin.settings.syncFrequency = value;
       await this.plugin.saveSettings();
       this.display();
     }));
     if (this.plugin.settings.syncFrequency === "auto") {
-      new import_obsidian2.Setting(containerEl).setName("\u540C\u6B65\u95F4\u9694").setDesc("\u81EA\u52A8\u540C\u6B65\u7684\u65F6\u95F4\u95F4\u9694\uFF08\u5206\u949F\uFF09").addText((text) => text.setPlaceholder("\u4F8B\u5982\uFF1A30").setValue(String(this.plugin.settings.autoSyncInterval)).onChange(async (value) => {
+      new import_obsidian2.Setting(containerEl).setName("Sync interval").setDesc("Interval between automatic syncs (minutes)").addText((text) => text.setPlaceholder("e.g. 30").setValue(String(this.plugin.settings.autoSyncInterval)).onChange(async (value) => {
         const interval = Number.parseInt(value, 10);
         if (Number.isFinite(interval) && interval > 0) {
           this.plugin.settings.autoSyncInterval = interval;
@@ -6654,37 +6657,37 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
       this.plugin.settings.syncAfter = value.trim();
       await this.plugin.saveSettings();
     }));
-    new import_obsidian2.Setting(containerEl).setName("\u542F\u7528 AI \u529F\u80FD").setDesc("\u5F00\u542F\u6216\u5173\u95ED AI \u589E\u5F3A\u529F\u80FD").addToggle((toggle) => toggle.setValue(this.plugin.settings.ai.enabled).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Enable AI features").setDesc("Toggle AI-enhanced processing").addToggle((toggle) => toggle.setValue(this.plugin.settings.ai.enabled).onChange(async (value) => {
       this.plugin.settings.ai.enabled = value;
       await this.plugin.saveSettings();
       this.display();
     }));
     if (this.plugin.settings.ai.enabled) {
-      new import_obsidian2.Setting(containerEl).setName("AI \u6A21\u578B").setDesc("\u9009\u62E9\u8981\u4F7F\u7528\u7684 AI \u6A21\u578B").addDropdown((dropdown) => dropdown.addOption("openai", "OpenAI").addOption("gemini", "Google Gemini").addOption("claude", "Anthropic Claude").addOption("ollama", "Ollama").setValue(this.plugin.settings.ai.modelType).onChange(async (value) => {
+      new import_obsidian2.Setting(containerEl).setName("AI model").setDesc("Select the AI model provider").addDropdown((dropdown) => dropdown.addOption("openai", "OpenAI").addOption("gemini", "Google Gemini").addOption("claude", "Anthropic Claude").addOption("ollama", "Ollama").setValue(this.plugin.settings.ai.modelType).onChange(async (value) => {
         this.plugin.settings.ai.modelType = value;
         await this.plugin.saveSettings();
         this.display();
       }));
       if (this.plugin.settings.ai.modelType !== "ollama") {
-        new import_obsidian2.Setting(containerEl).setName("API \u5BC6\u94A5").setDesc("\u60A8\u7684 AI \u670D\u52A1 API \u5BC6\u94A5").addText((text) => text.setPlaceholder("\u8F93\u5165 API \u5BC6\u94A5").setValue(this.plugin.settings.ai.apiKey).onChange(async (value) => {
+        new import_obsidian2.Setting(containerEl).setName("API key").setDesc("Your AI service API key").addText((text) => text.setPlaceholder("Enter API key").setValue(this.plugin.settings.ai.apiKey).onChange(async (value) => {
           this.plugin.settings.ai.apiKey = value;
           await this.plugin.saveSettings();
         }));
       }
       this.displayModelOptions(containerEl);
-      new import_obsidian2.Setting(containerEl).setName("\u6BCF\u5468\u6C47\u603B").setDesc("\u81EA\u52A8\u751F\u6210\u6BCF\u5468\u5185\u5BB9\u6C47\u603B").addToggle((toggle) => toggle.setValue(this.plugin.settings.ai.weeklyDigest).onChange(async (value) => {
+      new import_obsidian2.Setting(containerEl).setName("Weekly digest").setDesc("Automatically generate a weekly summary").addToggle((toggle) => toggle.setValue(this.plugin.settings.ai.weeklyDigest).onChange(async (value) => {
         this.plugin.settings.ai.weeklyDigest = value;
         await this.plugin.saveSettings();
       }));
-      new import_obsidian2.Setting(containerEl).setName("\u81EA\u52A8\u6807\u7B7E").setDesc("\u6839\u636E\u5185\u5BB9\u81EA\u52A8\u751F\u6210\u6807\u7B7E").addToggle((toggle) => toggle.setValue(this.plugin.settings.ai.autoTags).onChange(async (value) => {
+      new import_obsidian2.Setting(containerEl).setName("Auto tags").setDesc("Automatically generate tags based on content").addToggle((toggle) => toggle.setValue(this.plugin.settings.ai.autoTags).onChange(async (value) => {
         this.plugin.settings.ai.autoTags = value;
         await this.plugin.saveSettings();
       }));
-      new import_obsidian2.Setting(containerEl).setName("\u667A\u80FD\u6458\u8981").setDesc("\u81EA\u52A8\u751F\u6210\u5185\u5BB9\u6458\u8981").addToggle((toggle) => toggle.setValue(this.plugin.settings.ai.intelligentSummary).onChange(async (value) => {
+      new import_obsidian2.Setting(containerEl).setName("Intelligent summary").setDesc("Automatically generate content summaries").addToggle((toggle) => toggle.setValue(this.plugin.settings.ai.intelligentSummary).onChange(async (value) => {
         this.plugin.settings.ai.intelligentSummary = value;
         await this.plugin.saveSettings();
       }));
-      new import_obsidian2.Setting(containerEl).setName("\u6458\u8981\u8BED\u8A00").setDesc("\u9009\u62E9\u6458\u8981\u751F\u6210\u7684\u8BED\u8A00").addDropdown((dropdown) => dropdown.addOption("zh", "\u4E2D\u6587").addOption("en", "\u82F1\u6587").addOption("ja", "\u65E5\u6587").addOption("ko", "\u97E9\u6587").setValue(this.plugin.settings.ai.summaryLanguage).onChange(async (value) => {
+      new import_obsidian2.Setting(containerEl).setName("Summary language").setDesc("Select the language for generated summaries").addDropdown((dropdown) => dropdown.addOption("zh", "Chinese").addOption("en", "English").addOption("ja", "Japanese").addOption("ko", "Korean").setValue(this.plugin.settings.ai.summaryLanguage).onChange(async (value) => {
         this.plugin.settings.ai.summaryLanguage = value;
         await this.plugin.saveSettings();
       }));
@@ -6693,7 +6696,7 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
   displayModelOptions(containerEl) {
     const modelType = this.plugin.settings.ai.modelType;
     if (modelType === "gemini") {
-      new import_obsidian2.Setting(containerEl).setName("Gemini \u6A21\u578B").setDesc("\u9009\u62E9\u8981\u4F7F\u7528\u7684 Gemini \u6A21\u578B").addDropdown((dropdown) => {
+      new import_obsidian2.Setting(containerEl).setName("Gemini model").setDesc("Select the Gemini model to use").addDropdown((dropdown) => {
         for (const [displayName, modelId] of Object.entries(GEMINI_MODELS)) {
           dropdown.addOption(modelId, `${displayName} - ${MODEL_DESCRIPTIONS[modelId]}`);
         }
@@ -6706,13 +6709,13 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
         });
       });
       if (this.plugin.settings.ai.modelName === "custom") {
-        new import_obsidian2.Setting(containerEl).setName("\u81EA\u5B9A\u4E49\u6A21\u578B\u540D\u79F0").setDesc("\u8F93\u5165\u8981\u4F7F\u7528\u7684\u81EA\u5B9A\u4E49\u6A21\u578B\u540D\u79F0").addText((text) => text.setPlaceholder("\u4F8B\u5982\uFF1Agemini-pro-latest").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
+        new import_obsidian2.Setting(containerEl).setName("Custom model name").setDesc("Enter the name of the custom model").addText((text) => text.setPlaceholder("e.g. gemini-pro-latest").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
           this.plugin.settings.ai.customModelName = value;
           await this.plugin.saveSettings();
         }));
       }
     } else if (modelType === "openai") {
-      new import_obsidian2.Setting(containerEl).setName("OpenAI \u6A21\u578B").setDesc("\u9009\u62E9\u8981\u4F7F\u7528\u7684 OpenAI \u6A21\u578B").addDropdown((dropdown) => {
+      new import_obsidian2.Setting(containerEl).setName("OpenAI model").setDesc("Select the OpenAI model to use").addDropdown((dropdown) => {
         for (const [displayName, modelId] of Object.entries(OPENAI_MODELS)) {
           dropdown.addOption(modelId, `${displayName} - ${MODEL_DESCRIPTIONS[modelId]}`);
         }
@@ -6725,18 +6728,18 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
         });
       });
       if (this.plugin.settings.ai.modelName === "custom") {
-        new import_obsidian2.Setting(containerEl).setName("\u81EA\u5B9A\u4E49\u6A21\u578B\u540D\u79F0").setDesc("\u8F93\u5165\u8981\u4F7F\u7528\u7684\u81EA\u5B9A\u4E49\u6A21\u578B\u540D\u79F0").addText((text) => text.setPlaceholder("\u4F8B\u5982\uFF1Agpt-4-1106-preview").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
+        new import_obsidian2.Setting(containerEl).setName("Custom model name").setDesc("Enter the name of the custom model").addText((text) => text.setPlaceholder("e.g. gpt-4-1106-preview").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
           this.plugin.settings.ai.customModelName = value;
           await this.plugin.saveSettings();
         }));
-        new import_obsidian2.Setting(containerEl).setName("OpenAI API \u57FA\u7840\u94FE\u63A5").setDesc("\u5982\u679C\u4F7F\u7528\u81EA\u5B9A\u4E49 API \u670D\u52A1\uFF0C\u8BF7\u8BBE\u7F6E\u5BF9\u5E94\u7684\u57FA\u7840\u94FE\u63A5").addText((text) => text.setPlaceholder("https://api.openai.com/v1").setValue(this.plugin.settings.ai.openaiBaseUrl || "https://api.openai.com/v1").onChange(async (value) => {
+        new import_obsidian2.Setting(containerEl).setName("OpenAI API base URL").setDesc("Base URL for custom API services").addText((text) => text.setPlaceholder("https://api.openai.com/v1").setValue(this.plugin.settings.ai.openaiBaseUrl || "https://api.openai.com/v1").onChange(async (value) => {
           this.plugin.settings.ai.openaiBaseUrl = value;
           await this.plugin.saveSettings();
         }));
       }
     } else if (modelType === "claude") {
-      new import_obsidian2.Setting(containerEl).setName("Claude \u6A21\u578B").setDesc("\u9009\u62E9\u8981\u4F7F\u7528\u7684 Claude \u6A21\u578B").addDropdown((dropdown) => {
-        dropdown.addOption("claude-3-opus-20240229", "Claude 3 Opus").addOption("claude-3-sonnet-20240229", "Claude 3 Sonnet").addOption("claude-3-haiku-20240307", "Claude 3 Haiku").addOption("custom", "\u81EA\u5B9A\u4E49\u6A21\u578B - \u81EA\u5B9A\u4E49\u6A21\u578B\u540D\u79F0");
+      new import_obsidian2.Setting(containerEl).setName("Claude model").setDesc("Select the Claude model to use").addDropdown((dropdown) => {
+        dropdown.addOption("claude-3-opus-20240229", "Claude 3 Opus").addOption("claude-3-sonnet-20240229", "Claude 3 Sonnet").addOption("claude-3-haiku-20240307", "Claude 3 Haiku").addOption("custom", "Custom model");
         const currentModel = this.plugin.settings.ai.modelName || "claude-3-opus-20240229";
         dropdown.setValue(currentModel);
         dropdown.onChange(async (value) => {
@@ -6746,17 +6749,17 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
         });
       });
       if (this.plugin.settings.ai.modelName === "custom") {
-        new import_obsidian2.Setting(containerEl).setName("\u81EA\u5B9A\u4E49\u6A21\u578B\u540D\u79F0").setDesc("\u8F93\u5165\u8981\u4F7F\u7528\u7684\u81EA\u5B9A\u4E49\u6A21\u578B\u540D\u79F0").addText((text) => text.setPlaceholder("\u4F8B\u5982\uFF1Aclaude-3-opus-next").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
+        new import_obsidian2.Setting(containerEl).setName("Custom model name").setDesc("Enter the name of the custom model").addText((text) => text.setPlaceholder("e.g. claude-3-opus-next").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
           this.plugin.settings.ai.customModelName = value;
           await this.plugin.saveSettings();
         }));
       }
     } else if (modelType === "ollama") {
-      new import_obsidian2.Setting(containerEl).setName("Ollama \u670D\u52A1\u5730\u5740").setDesc("\u8BBE\u7F6E Ollama \u670D\u52A1\u7684\u5730\u5740\uFF08\u9ED8\u8BA4\u4E3A http://localhost:11434\uFF09").addText((text) => text.setPlaceholder("http://localhost:11434").setValue(this.plugin.settings.ai.ollamaBaseUrl).onChange(async (value) => {
+      new import_obsidian2.Setting(containerEl).setName("Ollama base URL").setDesc("Base URL for the Ollama service (default: http://localhost:11434)").addText((text) => text.setPlaceholder("http://localhost:11434").setValue(this.plugin.settings.ai.ollamaBaseUrl).onChange(async (value) => {
         this.plugin.settings.ai.ollamaBaseUrl = value;
         await this.plugin.saveSettings();
       }));
-      new import_obsidian2.Setting(containerEl).setName("Ollama \u6A21\u578B").setDesc("\u9009\u62E9\u8981\u4F7F\u7528\u7684 Ollama \u6A21\u578B").addDropdown((dropdown) => {
+      new import_obsidian2.Setting(containerEl).setName("Ollama model").setDesc("Select the Ollama model to use").addDropdown((dropdown) => {
         for (const [displayName, modelId] of Object.entries(OLLAMA_MODELS)) {
           if (typeof modelId === "string") {
             dropdown.addOption(modelId, `${displayName} - ${MODEL_DESCRIPTIONS[modelId] || modelId}`);
@@ -6772,7 +6775,7 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
         });
       });
       if (this.plugin.settings.ai.modelName === "custom") {
-        new import_obsidian2.Setting(containerEl).setName("\u81EA\u5B9A\u4E49\u6A21\u578B\u540D\u79F0").setDesc("\u8F93\u5165\u8981\u4F7F\u7528\u7684\u81EA\u5B9A\u4E49\u6A21\u578B\u540D\u79F0").addText((text) => text.setPlaceholder("\u4F8B\u5982\uFF1Allama2:13b").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
+        new import_obsidian2.Setting(containerEl).setName("Custom model name").setDesc("Enter the name of the custom model").addText((text) => text.setPlaceholder("e.g. llama2:13b").setValue(this.plugin.settings.ai.customModelName).onChange(async (value) => {
           this.plugin.settings.ai.customModelName = value;
           await this.plugin.saveSettings();
         }));
@@ -7250,27 +7253,27 @@ var StatusService = class {
         icon = "sync";
         const progress = this.totalCount ? ` ${this.progressCount}/${this.totalCount}` : "";
         const elapsed = this.syncStartTime ? ` (${Math.round((Date.now() - this.syncStartTime) / 1e3)}s)` : "";
-        text = `\u540C\u6B65\u4E2D${progress}${elapsed}`;
+        text = `Syncing${progress}${elapsed}`;
         break;
       }
       case "error": {
         icon = "alert-circle";
-        text = "\u540C\u6B65\u5931\u8D25";
+        text = "Sync failed";
         break;
       }
       case "success": {
         icon = "check-circle";
-        text = "\u540C\u6B65\u5B8C\u6210";
+        text = "Sync complete";
         break;
       }
       case "warning": {
         icon = "alert-triangle";
-        text = "\u8B66\u544A";
+        text = "Warning";
         break;
       }
       default: {
         icon = "clock";
-        text = "\u7B49\u5F85\u540C\u6B65";
+        text = "Idle";
       }
     }
     this.statusBarItem.innerHTML = "";
@@ -7287,7 +7290,7 @@ var StatusService = class {
     this.progressCount = 0;
     this.totalCount = totalItems;
     this.updateStatusBar();
-    new import_obsidian5.Notice("\u5F00\u59CB\u540C\u6B65 Memos");
+    new import_obsidian5.Notice("Syncing memos");
   }
   updateProgress(current, message) {
     this.progressCount = current;
@@ -7335,7 +7338,7 @@ var MemosSyncPlugin = class extends import_obsidian6.Plugin {
     this.statusService = new StatusService(statusBarItem);
     this.initializeServices();
     this.addSettingTab(new MemosSyncSettingTab(this.app, this));
-    this.addRibbonIcon("sync", "Sync Memos AI Sync+", async () => {
+    this.addRibbonIcon("sync", "Sync memos", async () => {
       await this.syncMemos();
     });
     if (this.settings.syncFrequency === "auto") {
@@ -7424,7 +7427,9 @@ var MemosSyncPlugin = class extends import_obsidian6.Plugin {
   }
   initializeAutoSync() {
     const interval = this.settings.autoSyncInterval * 60 * 1e3;
-    setInterval(() => this.syncMemos(), interval);
+    setInterval(() => {
+      void this.syncMemos();
+    }, interval);
   }
 };
 /*! Bundled license information:

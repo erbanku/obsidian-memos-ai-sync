@@ -1,4 +1,4 @@
-import { Plugin, Notice } from 'obsidian';
+import { Plugin } from 'obsidian';
 import type { MemosPluginSettings } from 'src/models/settings';
 import { DEFAULT_SETTINGS } from 'src/models/settings';
 import { MemosSyncSettingTab } from 'src/ui/settings-tab';
@@ -27,7 +27,7 @@ export default class MemosSyncPlugin extends Plugin {
 
         this.addSettingTab(new MemosSyncSettingTab(this.app, this));
 
-        this.addRibbonIcon('sync', 'Sync Memos AI Sync+', async () => {
+        this.addRibbonIcon('sync', 'Sync memos', async () => {
             await this.syncMemos();
         });
 
@@ -138,6 +138,6 @@ export default class MemosSyncPlugin extends Plugin {
 
     private initializeAutoSync() {
         const interval = this.settings.autoSyncInterval * 60 * 1000;
-        setInterval(() => this.syncMemos(), interval);
+        setInterval(() => { void this.syncMemos(); }, interval);
     }
 }

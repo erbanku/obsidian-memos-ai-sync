@@ -1,5 +1,5 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
-import type { AIModelType, MemosPluginSettings } from '../models/settings';
+import type { AIModelType } from '../models/settings';
 import type MemosSyncPlugin from '../../main';
 import { GEMINI_MODELS, OPENAI_MODELS, OLLAMA_MODELS, MODEL_DESCRIPTIONS } from '../services/ai-service';
 
@@ -27,10 +27,10 @@ export class MemosSyncSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('访问令牌')
-            .setDesc('您的 Memos API 访问令牌')
+            .setName('Access token')
+            .setDesc('Your Memos API access token')
             .addText(text => text
-                .setPlaceholder('输入访问令牌')
+                .setPlaceholder('Enter access token')
                 .setValue(this.plugin.settings.memosAccessToken)
                 .onChange(async (value) => {
                     this.plugin.settings.memosAccessToken = value;
@@ -38,10 +38,10 @@ export class MemosSyncSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('同步目录')
-            .setDesc('Memos 内容在 Obsidian 中的存储位置')
+            .setName('Sync directory')
+            .setDesc('Folder in Obsidian where Memos content will be stored')
             .addText(text => text
-                .setPlaceholder('例如：memos')
+                .setPlaceholder('e.g. memos')
                 .setValue(this.plugin.settings.syncDirectory)
                 .onChange(async (value) => {
                     this.plugin.settings.syncDirectory = value;
@@ -49,11 +49,11 @@ export class MemosSyncSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('同步模式')
-            .setDesc('选择手动同步或自动同步')
+            .setName('Sync mode')
+            .setDesc('Choose manual or automatic sync')
             .addDropdown(dropdown => dropdown
-                .addOption('manual', '手动同步')
-                .addOption('auto', '自动同步')
+                .addOption('manual', 'Manual')
+                .addOption('auto', 'Automatic')
                 .setValue(this.plugin.settings.syncFrequency)
                 .onChange(async (value: 'manual' | 'auto') => {
                     this.plugin.settings.syncFrequency = value;
@@ -64,10 +64,10 @@ export class MemosSyncSettingTab extends PluginSettingTab {
 
         if (this.plugin.settings.syncFrequency === 'auto') {
             new Setting(containerEl)
-                .setName('同步间隔')
-                .setDesc('自动同步的时间间隔（分钟）')
+                .setName('Sync interval')
+                .setDesc('Interval between automatic syncs (minutes)')
                 .addText(text => text
-                    .setPlaceholder('例如：30')
+                    .setPlaceholder('e.g. 30')
                     .setValue(String(this.plugin.settings.autoSyncInterval))
                     .onChange(async (value) => {
                         const interval = Number.parseInt(value, 10);
@@ -105,8 +105,8 @@ export class MemosSyncSettingTab extends PluginSettingTab {
 
         // AI features
         new Setting(containerEl)
-            .setName('启用 AI 功能')
-            .setDesc('开启或关闭 AI 增强功能')
+            .setName('Enable AI features')
+            .setDesc('Toggle AI-enhanced processing')
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.ai.enabled)
                 .onChange(async (value) => {
@@ -119,8 +119,8 @@ export class MemosSyncSettingTab extends PluginSettingTab {
         if (this.plugin.settings.ai.enabled) {
             // AI 模型选择
             new Setting(containerEl)
-                .setName('AI 模型')
-                .setDesc('选择要使用的 AI 模型')
+                .setName('AI model')
+                .setDesc('Select the AI model provider')
                 .addDropdown(dropdown => dropdown
                     .addOption('openai', 'OpenAI')
                     .addOption('gemini', 'Google Gemini')
@@ -137,10 +137,10 @@ export class MemosSyncSettingTab extends PluginSettingTab {
             // 只有在选择非 Ollama 模型时显示 API 密钥设置
             if (this.plugin.settings.ai.modelType !== 'ollama') {
                 new Setting(containerEl)
-                    .setName('API 密钥')
-                    .setDesc('您的 AI 服务 API 密钥')
+                    .setName('API key')
+                    .setDesc('Your AI service API key')
                     .addText(text => text
-                        .setPlaceholder('输入 API 密钥')
+                        .setPlaceholder('Enter API key')
                         .setValue(this.plugin.settings.ai.apiKey)
                         .onChange(async (value) => {
                             this.plugin.settings.ai.apiKey = value;
@@ -153,8 +153,8 @@ export class MemosSyncSettingTab extends PluginSettingTab {
 
             // AI 功能选项
             new Setting(containerEl)
-                .setName('每周汇总')
-                .setDesc('自动生成每周内容汇总')
+                .setName('Weekly digest')
+                .setDesc('Automatically generate a weekly summary')
                 .addToggle(toggle => toggle
                     .setValue(this.plugin.settings.ai.weeklyDigest)
                     .onChange(async (value) => {
@@ -163,8 +163,8 @@ export class MemosSyncSettingTab extends PluginSettingTab {
                     }));
 
             new Setting(containerEl)
-                .setName('自动标签')
-                .setDesc('根据内容自动生成标签')
+                .setName('Auto tags')
+                .setDesc('Automatically generate tags based on content')
                 .addToggle(toggle => toggle
                     .setValue(this.plugin.settings.ai.autoTags)
                     .onChange(async (value) => {
@@ -173,8 +173,8 @@ export class MemosSyncSettingTab extends PluginSettingTab {
                     }));
 
             new Setting(containerEl)
-                .setName('智能摘要')
-                .setDesc('自动生成内容摘要')
+                .setName('Intelligent summary')
+                .setDesc('Automatically generate content summaries')
                 .addToggle(toggle => toggle
                     .setValue(this.plugin.settings.ai.intelligentSummary)
                     .onChange(async (value) => {
@@ -183,13 +183,13 @@ export class MemosSyncSettingTab extends PluginSettingTab {
                     }));
 
             new Setting(containerEl)
-                .setName('摘要语言')
-                .setDesc('选择摘要生成的语言')
+                .setName('Summary language')
+                .setDesc('Select the language for generated summaries')
                 .addDropdown(dropdown => dropdown
-                    .addOption('zh', '中文')
-                    .addOption('en', '英文')
-                    .addOption('ja', '日文')
-                    .addOption('ko', '韩文')
+                    .addOption('zh', 'Chinese')
+                    .addOption('en', 'English')
+                    .addOption('ja', 'Japanese')
+                    .addOption('ko', 'Korean')
                     .setValue(this.plugin.settings.ai.summaryLanguage)
                     .onChange(async (value: 'zh' | 'en' | 'ja' | 'ko') => {
                         this.plugin.settings.ai.summaryLanguage = value;
@@ -203,8 +203,8 @@ export class MemosSyncSettingTab extends PluginSettingTab {
 
         if (modelType === 'gemini') {
             new Setting(containerEl)
-                .setName('Gemini 模型')
-                .setDesc('选择要使用的 Gemini 模型')
+                .setName('Gemini model')
+                .setDesc('Select the Gemini model to use')
                 .addDropdown(dropdown => {
                     // 添加所有模型选项
                     for (const [displayName, modelId] of Object.entries(GEMINI_MODELS)) {
@@ -223,13 +223,13 @@ export class MemosSyncSettingTab extends PluginSettingTab {
                     });
                 });
 
-            // 如果选择了自定义模型，显示输入框
+            // If custom model is selected, show input
             if (this.plugin.settings.ai.modelName === 'custom') {
                 new Setting(containerEl)
-                    .setName('自定义模型名称')
-                    .setDesc('输入要使用的自定义模型名称')
+                    .setName('Custom model name')
+                    .setDesc('Enter the name of the custom model')
                     .addText(text => text
-                        .setPlaceholder('例如：gemini-pro-latest')
+                        .setPlaceholder('e.g. gemini-pro-latest')
                         .setValue(this.plugin.settings.ai.customModelName)
                         .onChange(async (value) => {
                             this.plugin.settings.ai.customModelName = value;
@@ -238,8 +238,8 @@ export class MemosSyncSettingTab extends PluginSettingTab {
             }
         } else if (modelType === 'openai') {
             new Setting(containerEl)
-                .setName('OpenAI 模型')
-                .setDesc('选择要使用的 OpenAI 模型')
+                .setName('OpenAI model')
+                .setDesc('Select the OpenAI model to use')
                 .addDropdown(dropdown => {
                     // 添加所有模型选项
                     for (const [displayName, modelId] of Object.entries(OPENAI_MODELS)) {
@@ -258,13 +258,13 @@ export class MemosSyncSettingTab extends PluginSettingTab {
                     });
                 });
 
-            // 如果选择了自定义模型，显示输入框
+            // If custom model is selected, show input
             if (this.plugin.settings.ai.modelName === 'custom') {
                 new Setting(containerEl)
-                    .setName('自定义模型名称')
-                    .setDesc('输入要使用的自定义模型名称')
+                    .setName('Custom model name')
+                    .setDesc('Enter the name of the custom model')
                     .addText(text => text
-                        .setPlaceholder('例如：gpt-4-1106-preview')
+                        .setPlaceholder('e.g. gpt-4-1106-preview')
                         .setValue(this.plugin.settings.ai.customModelName)
                         .onChange(async (value) => {
                             this.plugin.settings.ai.customModelName = value;
@@ -272,8 +272,8 @@ export class MemosSyncSettingTab extends PluginSettingTab {
                         }));
 
 				new Setting(containerEl)
-					.setName('OpenAI API 基础链接')
-					.setDesc('如果使用自定义 API 服务，请设置对应的基础链接')
+					.setName('OpenAI API base URL')
+					.setDesc('Base URL for custom API services')
 					.addText(text => text
 						.setPlaceholder('https://api.openai.com/v1')
 						.setValue(this.plugin.settings.ai.openaiBaseUrl || 'https://api.openai.com/v1')
@@ -285,13 +285,13 @@ export class MemosSyncSettingTab extends PluginSettingTab {
 
         } else if (modelType === 'claude') {
             new Setting(containerEl)
-                .setName('Claude 模型')
-                .setDesc('选择要使用的 Claude 模型')
+                .setName('Claude model')
+                .setDesc('Select the Claude model to use')
                 .addDropdown(dropdown => {
                     dropdown.addOption('claude-3-opus-20240229', 'Claude 3 Opus')
                         .addOption('claude-3-sonnet-20240229', 'Claude 3 Sonnet')
                         .addOption('claude-3-haiku-20240307', 'Claude 3 Haiku')
-                        .addOption('custom', '自定义模型 - 自定义模型名称');
+                        .addOption('custom', 'Custom model');
 
                     const currentModel = this.plugin.settings.ai.modelName || 'claude-3-opus-20240229';
                     dropdown.setValue(currentModel);
@@ -305,10 +305,10 @@ export class MemosSyncSettingTab extends PluginSettingTab {
 
             if (this.plugin.settings.ai.modelName === 'custom') {
                 new Setting(containerEl)
-                    .setName('自定义模型名称')
-                    .setDesc('输入要使用的自定义模型名称')
+                    .setName('Custom model name')
+                    .setDesc('Enter the name of the custom model')
                     .addText(text => text
-                        .setPlaceholder('例如：claude-3-opus-next')
+                        .setPlaceholder('e.g. claude-3-opus-next')
                         .setValue(this.plugin.settings.ai.customModelName)
                         .onChange(async (value) => {
                             this.plugin.settings.ai.customModelName = value;
@@ -316,10 +316,10 @@ export class MemosSyncSettingTab extends PluginSettingTab {
                         }));
             }
         } else if (modelType === 'ollama') {
-            // 添加 Ollama 服务地址设置
+            // Ollama base URL
             new Setting(containerEl)
-                .setName('Ollama 服务地址')
-                .setDesc('设置 Ollama 服务的地址（默认为 http://localhost:11434）')
+                .setName('Ollama base URL')
+                .setDesc('Base URL for the Ollama service (default: http://localhost:11434)')
                 .addText(text => text
                     .setPlaceholder('http://localhost:11434')
                     .setValue(this.plugin.settings.ai.ollamaBaseUrl)
@@ -328,10 +328,10 @@ export class MemosSyncSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }));
 
-            // Ollama 模型选择
+            // Ollama model selection
             new Setting(containerEl)
-                .setName('Ollama 模型')
-                .setDesc('选择要使用的 Ollama 模型')
+                .setName('Ollama model')
+                .setDesc('Select the Ollama model to use')
                 .addDropdown(dropdown => {
                     // 添加所有模型选项
                     for (const [displayName, modelId] of Object.entries(OLLAMA_MODELS)) {
@@ -352,13 +352,13 @@ export class MemosSyncSettingTab extends PluginSettingTab {
                     });
                 });
 
-            // 如果选择了自定义模型，显示输入框
+            // If custom model is selected, show input
             if (this.plugin.settings.ai.modelName === 'custom') {
                 new Setting(containerEl)
-                    .setName('自定义模型名称')
-                    .setDesc('输入要使用的自定义模型名称')
+                    .setName('Custom model name')
+                    .setDesc('Enter the name of the custom model')
                     .addText(text => text
-                        .setPlaceholder('例如：llama2:13b')
+                        .setPlaceholder('e.g. llama2:13b')
                         .setValue(this.plugin.settings.ai.customModelName)
                         .onChange(async (value) => {
                             this.plugin.settings.ai.customModelName = value;

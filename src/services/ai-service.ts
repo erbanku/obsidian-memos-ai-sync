@@ -116,17 +116,18 @@ class GeminiService implements AIService {
         this.logger = new Logger('GeminiService');
     }
 
-    async initialize(apiKey?: string, modelName?: string): Promise<void> {
+    initialize(apiKey?: string, modelName?: string): Promise<void> {
         this.logger.debug('Gemini 服务初始化成功，使用模型:', this.model);
+        return Promise.resolve();
     }
 
-    private async handleRateLimit(error: Error, retryCount: number): Promise<number> {
+    private handleRateLimit(error: Error, retryCount: number): number {
         const delay = Math.min(1000 * (2 ** retryCount), 30000);
         this.logger.warn(`配额限制，等待 ${delay}ms 后重试...`);
         return delay;
     }
 
-    private async handleError(error: Error, retryCount: number): Promise<number> {
+    private handleError(error: Error, retryCount: number): number {
         const delay = Math.min(1000 * (2 ** retryCount), 30000);
         this.logger.error(`操作失败，等待 ${delay}ms 后重试...`, error);
         return delay;
@@ -136,7 +137,7 @@ class GeminiService implements AIService {
         const prompt = `请用${language === 'zh' ? '中文' : 'English'}总结以下内容的要点：\n\n${content}`;
         return retryWithBackoff(async () => {
             const result = await this.model.generateContent(prompt);
-            const response = await result.response;
+            const response = result.response;
             return response.text().trim();
         });
     }
@@ -145,7 +146,7 @@ class GeminiService implements AIService {
         const prompt = `请为以下内容生成3-5个相关标签（不要带#号）：\n\n${content}`;
         return retryWithBackoff(async () => {
             const result = await this.model.generateContent(prompt);
-            const response = await result.response;
+            const response = result.response;
             return response.text().split(/[,，\s]+/).filter(Boolean);
         });
     }
@@ -162,7 +163,7 @@ class GeminiService implements AIService {
 
         return retryWithBackoff(async () => {
             const result = await this.model.generateContent(prompt);
-            const response = await result.response;
+            const response = result.response;
             return response.text().trim();
         });
     }
@@ -175,7 +176,7 @@ export class OpenAIService implements AIService {
     private logger: Logger;
 
     // 生成随机 IV
-    private async generateIV(): Promise<Uint8Array> {
+    private generateIV(): Uint8Array {
         return crypto.getRandomValues(new Uint8Array(12));
     }
 
@@ -193,7 +194,7 @@ export class OpenAIService implements AIService {
 
     // 加密 API 密钥
     private async encryptApiKey(apiKey: string): Promise<string> {
-        const iv = await this.generateIV();
+        const iv = this.generateIV();
         const key = await this.generateKey();
         const encodedText = new TextEncoder().encode(apiKey);
 
@@ -283,7 +284,7 @@ export class OpenAIService implements AIService {
             // 验证 API 密钥
             try {
                 await this.client.models.list();
-            } catch (error) {
+            } catch {
                 throw new Error('API 密钥验证失败');
             }
 
@@ -358,17 +359,18 @@ class OllamaService implements AIService {
         this.logger = new Logger('OllamaService');
     }
 
-    async initialize(apiKey?: string, modelName?: string): Promise<void> {
+    initialize(apiKey?: string, modelName?: string): Promise<void> {
         this.logger.debug('Ollama 服务初始化成功，使用模型:', this.model);
+        return Promise.resolve();
     }
 
-    private async handleRateLimit(error: Error, retryCount: number): Promise<number> {
+    private handleRateLimit(error: Error, retryCount: number): number {
         const delay = Math.min(1000 * (2 ** retryCount), 30000);
         this.logger.warn(`配额限制，等待 ${delay}ms 后重试...`);
         return delay;
     }
 
-    private async handleError(error: Error, retryCount: number): Promise<number> {
+    private handleError(error: Error, retryCount: number): number {
         const delay = Math.min(1000 * (2 ** retryCount), 30000);
         this.logger.error(`操作失败，等待 ${delay}ms 后重试...`, error);
         return delay;
@@ -469,20 +471,21 @@ export function createAIService(type: string, apiKey: string, modelName?: string
 export function createDummyAIService(): AIService {
     const logger = new Logger('DummyAIService');
     return {
-        async generateSummary(): Promise<string> {
+        generateSummary(): Promise<string> {
             logger.debug('使用空 AI 服务');
-            return '';
+            return Promise.resolve('');
         },
-        async generateTags(): Promise<string[]> {
+        generateTags(): Promise<string[]> {
             logger.debug('使用空 AI 服务');
-            return [];
+            return Promise.resolve([]);
         },
-        async generateWeeklyDigest(): Promise<string> {
+        generateWeeklyDigest(): Promise<string> {
             logger.debug('使用空 AI 服务');
-            return '';
+            return Promise.resolve('');
         },
-        async initialize(): Promise<void> {
+        initialize(): Promise<void> {
             logger.debug('初始化空 AI 服务');
+            return Promise.resolve();
         }
     };
 }
