@@ -1,11 +1,6 @@
-import type { MemoItem } from '../models/settings';
+import type { MemoItem, MemoResource } from '../models/settings';
 import { Logger } from './logger';
-import { requestUrl, RequestUrlResponse } from 'obsidian';
-
-export interface MemosResponse {
-    memos: MemoItem[];
-    nextPageToken?: string;
-}
+import { requestUrl } from 'obsidian';
 
 export class MemosService {
     private logger: Logger;
@@ -13,131 +8,130 @@ export class MemosService {
     constructor(
         private apiUrl: string,
         private accessToken: string,
-        private syncLimit: number
+        private syncLimit: number,
+        private syncAfter: string = ''
     ) {
         this.logger = new Logger('MemosService');
     }
 
-    async fetchAllMemos(): Promise<MemoItem[]> {
-        try {
-            this.logger.debug('开始获取 memos，API URL:', this.apiUrl);
-            this.logger.debug('Access Token:', this.accessToken ? '已设置' : '未设置');
-            this.logger.debug('同步限制:', this.syncLimit, '条');
-
-            const allMemos: MemoItem[] = [];
-            let pageToken: string | undefined;
-            const pageSize = Math.min(100, this.syncLimit);
-
-            // 验证 API URL 格式
-            if (!this.apiUrl.includes('/api/v1')) {
-                throw new Error('API URL 格式不正确，请确保包含 /api/v1');
-            }
-
-            do {
-                const baseUrl = this.apiUrl;
-                const url = `${baseUrl}/memos`;
-
-                // 构建请求参数
-            const params = new URLSearchParams({
-                'state': 'NORMAL',
-                'pageSize': pageSize.toString()
-            });
-
-            if (pageToken) {
-                params.set('pageToken', pageToken);
-            }
-
-                const finalUrl = `${url}?${params.toString()}`;
-                this.logger.debug('请求 URL:', finalUrl);
-
-                const response = await requestUrl({
-                    url: finalUrl,
-                    headers: {
-                        'Authorization': `Bearer ${this.accessToken}`,
-                        'Accept': 'application/json'
-                    }
-                });
-
-                if (response.status !== 200) {
-                    throw new Error(`HTTP ${response.status}: 请求失败\n响应内容: ${response.text}`);
-                }
-
-                const responseData = response.json;
-                this.logger.debug('API 响应数据:', responseData);
-
-                if (!responseData || !Array.isArray(responseData.memos)) {
-                    throw new Error('响应格式无效: 返回数据不包含 memos 数组');
-                }
-
-                const memos = responseData.memos;
-                pageToken = responseData.nextPageToken;
-
-                if (memos.length === 0) {
-                    break; // 没有更多数据了
-                }
-
-                // 只添加需要的数量
-                const remainingCount = this.syncLimit - allMemos.length;
-                const neededCount = Math.min(memos.length, remainingCount);
-                allMemos.push(...memos.slice(0, neededCount));
-                this.logger.debug(`本次获取 ${neededCount} 条 memos，总计: ${allMemos.length}/${this.syncLimit}`);
-
-                // 如果已经达到同步限制或没有下一页，就退出
-                if (allMemos.length >= this.syncLimit || !pageToken) {
-                    break;
-                }
-
-            } while (true);
-
-            this.logger.debug(`最终返回 ${allMemos.length} 条 memos`);
-            return allMemos.sort((a, b) => 
-                new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
-            );
-        } catch (error) {
-            this.logger.error('获取 memos 失败:', error);
-            if (error instanceof TypeError && error.message === 'Failed to fetch') {
-                throw new Error(`网络错误: 无法连接到 ${this.apiUrl}。请检查 URL 是否正确且可访问。`);
-            }
-            throw error;
-        }
+    /**
+     * Return the base URL with a trailing slash.
+     * Accepts either a bare host URL (https://demo.usememos.com/) or one
+     * that already has /api/v1 appended (both forms are normalised here).
+     */
+    private base(): string {
+        const url = this.apiUrl.replace(/\/api\/v1\/?$/, '');
+        return url.endsWith('/') ? url : `${url}/`;
     }
 
-    async downloadResource(resource: { name: string; filename: string; type?: string }): Promise<ArrayBuffer | null> {
+    private headers(): Record<string, string> {
+        return {
+            Authorization: `Bearer ${this.accessToken}`,
+            Accept: 'application/json',
+        };
+    }
+
+    /**
+     * Fetch all NORMAL memos using the Memos v0.21 REST API.
+     *
+     * Endpoint: GET /api/v1/memo?rowStatus=NORMAL&limit=<n>&offset=<n>
+     * Response: plain JSON array of Memo objects (no pagination envelope).
+     */
+    async fetchAllMemos(): Promise<MemoItem[]> {
+        this.logger.debug('Fetching memos from:', this.base());
+        const pageSize = 100;
+        const all: MemoItem[] = [];
+        let offset = 0;
+
+        while (all.length < this.syncLimit) {
+            const remaining = this.syncLimit - all.length;
+            const limit = Math.min(pageSize, remaining);
+            const url = `${this.base()}api/v1/memo?rowStatus=NORMAL&limit=${limit}&offset=${offset}`;
+            this.logger.debug('GET', url);
+
+            const response = await requestUrl({ url, headers: this.headers() });
+
+            if (response.status !== 200) {
+                throw new Error(`Memos API error ${response.status}: ${response.text}`);
+            }
+
+            const batch: MemoItem[] = response.json;
+
+            if (!Array.isArray(batch) || batch.length === 0) {
+                break;
+            }
+
+            all.push(...batch);
+            offset += batch.length;
+
+            if (batch.length < limit) {
+                break; // server returned fewer items — no more pages
+            }
+        }
+
+        // Optional date filter
+        const afterTs = this.syncAfter
+            ? Math.floor(new Date(this.syncAfter).getTime() / 1000)
+            : 0;
+
+        const filtered = afterTs
+            ? all.filter(m => m.createdTs >= afterTs)
+            : all;
+
+        this.logger.debug(`Fetched ${filtered.length} memos`);
+        return filtered.sort((a, b) => b.createdTs - a.createdTs);
+    }
+
+    /**
+     * Public URL of a v0.21 resource attachment.
+     * Pattern: {base}o/r/{id}/{publicId || filename}
+     */
+    resourceUrl(resource: MemoResource): string {
+        if (resource.externalLink) return resource.externalLink;
+        const fileId = resource.publicId ?? resource.filename;
+        return `${this.base()}o/r/${resource.id}/${encodeURIComponent(fileId)}`;
+    }
+
+    /**
+     * Download a resource attachment as binary data.
+     */
+    async downloadResource(resource: MemoResource): Promise<ArrayBuffer | null> {
+        const url = this.resourceUrl(resource);
+        this.logger.debug('Downloading resource:', url);
         try {
-            // 从 resource.name 中提取 attachment ID
-            // resource.name 格式: attachments/{attachment_id}
-            const attachmentId = resource.name.split('/').pop() || resource.name;
-            const resourceUrl = `${this.apiUrl.replace('/api/v1', '')}/file/attachments/${attachmentId}/${encodeURIComponent(resource.filename)}`;
-
-            this.logger.debug(`正在下载资源: ${resourceUrl}`);
-
             const response = await requestUrl({
-                url: resourceUrl,
-                headers: {
-                    'Authorization': `Bearer ${this.accessToken}`,
-                    'Accept': '*/*'
-                },
-                method: 'GET'
+                url,
+                headers: { Authorization: `Bearer ${this.accessToken}` },
             });
 
             if (response.status !== 200) {
-                this.logger.error(`下载资源失败: ${response.status}`);
-                this.logger.error(`响应内容: ${response.text}`);
+                this.logger.warn(`Resource download failed (${response.status}): ${url}`);
                 return null;
             }
 
-            // 检查是否有 arrayBuffer 属性
-            if ('arrayBuffer' in response && response.arrayBuffer) {
-                this.logger.debug(`成功获取资源，大小: ${response.arrayBuffer.byteLength} 字节`);
+            if (response.arrayBuffer) {
                 return response.arrayBuffer;
-            } else {
-                // 如果没有 arrayBuffer，尝试使用其他方式获取二进制数据
-                this.logger.warn('响应中没有 arrayBuffer 属性');
-                return null;
             }
+            this.logger.warn('No arrayBuffer in response for:', url);
+            return null;
         } catch (error) {
-            this.logger.error('下载资源时出错:', error);
+            this.logger.error('Resource download error:', error);
             return null;
         }
     }
-} 
+
+    /**
+     * Validate connection by fetching one memo. Returns true on success.
+     */
+    async testConnection(): Promise<boolean> {
+        try {
+            const response = await requestUrl({
+                url: `${this.base()}api/v1/memo?rowStatus=NORMAL&limit=1`,
+                headers: this.headers(),
+            });
+            return response.status === 200;
+        } catch {
+            return false;
+        }
+    }
+}

@@ -27,7 +27,7 @@ export default class MemosSyncPlugin extends Plugin {
 
         this.addSettingTab(new MemosSyncSettingTab(this.app, this));
 
-        this.addRibbonIcon('sync', 'Sync Memos', async () => {
+        this.addRibbonIcon('sync', 'Sync Memos AI Sync+', async () => {
             await this.syncMemos();
         });
 
@@ -40,7 +40,8 @@ export default class MemosSyncPlugin extends Plugin {
         this.memosService = new MemosService(
             this.settings.memosApiUrl,
             this.settings.memosAccessToken,
-            this.settings.syncLimit
+            this.settings.syncLimit,
+            this.settings.syncAfter
         );
 
         let aiService: AIService | null = null;

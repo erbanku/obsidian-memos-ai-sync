@@ -37,6 +37,7 @@ var DEFAULT_SETTINGS = {
   syncFrequency: "manual",
   autoSyncInterval: 30,
   syncLimit: 1e3,
+  syncAfter: "",
   ai: {
     enabled: false,
     modelType: "openai",
@@ -6616,8 +6617,8 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian2.Setting(containerEl).setName("Memos API URL").setDesc("\u60A8\u7684 Memos \u670D\u52A1\u5668 API \u5730\u5740,\u683C\u5F0F\u5982\uFF1Ahttps://memose.com/api/v1 ").addText((text) => text.setPlaceholder("https://x.com/api/v1").setValue(this.plugin.settings.memosApiUrl).onChange(async (value) => {
-      this.plugin.settings.memosApiUrl = value;
+    new import_obsidian2.Setting(containerEl).setName("Memos URL").setDesc("Memos server base URL, e.g. https://demo.usememos.com/").addText((text) => text.setPlaceholder("https://demo.usememos.com/").setValue(this.plugin.settings.memosApiUrl).onChange(async (value) => {
+      this.plugin.settings.memosApiUrl = value.trim();
       await this.plugin.saveSettings();
     }));
     new import_obsidian2.Setting(containerEl).setName("\u8BBF\u95EE\u4EE4\u724C").setDesc("\u60A8\u7684 Memos API \u8BBF\u95EE\u4EE4\u724C").addText((text) => text.setPlaceholder("\u8F93\u5165\u8BBF\u95EE\u4EE4\u724C").setValue(this.plugin.settings.memosAccessToken).onChange(async (value) => {
@@ -6642,12 +6643,16 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
         }
       }));
     }
-    new import_obsidian2.Setting(containerEl).setName("\u540C\u6B65\u6761\u6570").setDesc("\u6BCF\u6B21\u540C\u6B65\u7684\u6700\u5927\u6761\u76EE\u6570").addText((text) => text.setPlaceholder("\u4F8B\u5982\uFF1A100").setValue(String(this.plugin.settings.syncLimit)).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Sync limit").setDesc("Maximum number of memos to fetch per sync.").addText((text) => text.setPlaceholder("1000").setValue(String(this.plugin.settings.syncLimit)).onChange(async (value) => {
       const limit2 = Number.parseInt(value, 10);
       if (Number.isFinite(limit2) && limit2 > 0) {
         this.plugin.settings.syncLimit = limit2;
         await this.plugin.saveSettings();
       }
+    }));
+    new import_obsidian2.Setting(containerEl).setName("Sync after date").setDesc("Only sync memos created on or after this date (YYYY-MM-DD). Leave empty to sync all.").addText((text) => text.setPlaceholder("2024-01-01").setValue(this.plugin.settings.syncAfter).onChange(async (value) => {
+      this.plugin.settings.syncAfter = value.trim();
+      await this.plugin.saveSettings();
     }));
     new import_obsidian2.Setting(containerEl).setName("\u542F\u7528 AI \u529F\u80FD").setDesc("\u5F00\u542F\u6216\u5173\u95ED AI \u589E\u5F3A\u529F\u80FD").addToggle((toggle) => toggle.setValue(this.plugin.settings.ai.enabled).onChange(async (value) => {
       this.plugin.settings.ai.enabled = value;
@@ -6779,104 +6784,111 @@ var MemosSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
 // src/services/memos-service.ts
 var import_obsidian3 = require("obsidian");
 var MemosService = class {
-  constructor(apiUrl, accessToken, syncLimit) {
+  constructor(apiUrl, accessToken, syncLimit, syncAfter = "") {
     this.apiUrl = apiUrl;
     this.accessToken = accessToken;
     this.syncLimit = syncLimit;
+    this.syncAfter = syncAfter;
     this.logger = new Logger("MemosService");
   }
-  async fetchAllMemos() {
-    try {
-      this.logger.debug("\u5F00\u59CB\u83B7\u53D6 memos\uFF0CAPI URL:", this.apiUrl);
-      this.logger.debug("Access Token:", this.accessToken ? "\u5DF2\u8BBE\u7F6E" : "\u672A\u8BBE\u7F6E");
-      this.logger.debug("\u540C\u6B65\u9650\u5236:", this.syncLimit, "\u6761");
-      const allMemos = [];
-      let pageToken;
-      const pageSize = Math.min(100, this.syncLimit);
-      if (!this.apiUrl.includes("/api/v1")) {
-        throw new Error("API URL \u683C\u5F0F\u4E0D\u6B63\u786E\uFF0C\u8BF7\u786E\u4FDD\u5305\u542B /api/v1");
-      }
-      do {
-        const baseUrl = this.apiUrl;
-        const url = `${baseUrl}/memos`;
-        const params = new URLSearchParams({
-          "state": "NORMAL",
-          "pageSize": pageSize.toString()
-        });
-        if (pageToken) {
-          params.set("pageToken", pageToken);
-        }
-        const finalUrl = `${url}?${params.toString()}`;
-        this.logger.debug("\u8BF7\u6C42 URL:", finalUrl);
-        const response = await (0, import_obsidian3.requestUrl)({
-          url: finalUrl,
-          headers: {
-            "Authorization": `Bearer ${this.accessToken}`,
-            "Accept": "application/json"
-          }
-        });
-        if (response.status !== 200) {
-          throw new Error(`HTTP ${response.status}: \u8BF7\u6C42\u5931\u8D25
-\u54CD\u5E94\u5185\u5BB9: ${response.text}`);
-        }
-        const responseData = response.json;
-        this.logger.debug("API \u54CD\u5E94\u6570\u636E:", responseData);
-        if (!responseData || !Array.isArray(responseData.memos)) {
-          throw new Error("\u54CD\u5E94\u683C\u5F0F\u65E0\u6548: \u8FD4\u56DE\u6570\u636E\u4E0D\u5305\u542B memos \u6570\u7EC4");
-        }
-        const memos = responseData.memos;
-        pageToken = responseData.nextPageToken;
-        if (memos.length === 0) {
-          break;
-        }
-        const remainingCount = this.syncLimit - allMemos.length;
-        const neededCount = Math.min(memos.length, remainingCount);
-        allMemos.push(...memos.slice(0, neededCount));
-        this.logger.debug(`\u672C\u6B21\u83B7\u53D6 ${neededCount} \u6761 memos\uFF0C\u603B\u8BA1: ${allMemos.length}/${this.syncLimit}`);
-        if (allMemos.length >= this.syncLimit || !pageToken) {
-          break;
-        }
-      } while (true);
-      this.logger.debug(`\u6700\u7EC8\u8FD4\u56DE ${allMemos.length} \u6761 memos`);
-      return allMemos.sort(
-        (a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime()
-      );
-    } catch (error) {
-      this.logger.error("\u83B7\u53D6 memos \u5931\u8D25:", error);
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        throw new Error(`\u7F51\u7EDC\u9519\u8BEF: \u65E0\u6CD5\u8FDE\u63A5\u5230 ${this.apiUrl}\u3002\u8BF7\u68C0\u67E5 URL \u662F\u5426\u6B63\u786E\u4E14\u53EF\u8BBF\u95EE\u3002`);
-      }
-      throw error;
-    }
+  /**
+   * Return the base URL with a trailing slash.
+   * Accepts either a bare host URL (https://demo.usememos.com/) or one
+   * that already has /api/v1 appended (both forms are normalised here).
+   */
+  base() {
+    const url = this.apiUrl.replace(/\/api\/v1\/?$/, "");
+    return url.endsWith("/") ? url : `${url}/`;
   }
+  headers() {
+    return {
+      Authorization: `Bearer ${this.accessToken}`,
+      Accept: "application/json"
+    };
+  }
+  /**
+   * Fetch all NORMAL memos using the Memos v0.21 REST API.
+   *
+   * Endpoint: GET /api/v1/memo?rowStatus=NORMAL&limit=<n>&offset=<n>
+   * Response: plain JSON array of Memo objects (no pagination envelope).
+   */
+  async fetchAllMemos() {
+    this.logger.debug("Fetching memos from:", this.base());
+    const pageSize = 100;
+    const all = [];
+    let offset = 0;
+    while (all.length < this.syncLimit) {
+      const remaining = this.syncLimit - all.length;
+      const limit2 = Math.min(pageSize, remaining);
+      const url = `${this.base()}api/v1/memo?rowStatus=NORMAL&limit=${limit2}&offset=${offset}`;
+      this.logger.debug("GET", url);
+      const response = await (0, import_obsidian3.requestUrl)({ url, headers: this.headers() });
+      if (response.status !== 200) {
+        throw new Error(`Memos API error ${response.status}: ${response.text}`);
+      }
+      const batch = response.json;
+      if (!Array.isArray(batch) || batch.length === 0) {
+        break;
+      }
+      all.push(...batch);
+      offset += batch.length;
+      if (batch.length < limit2) {
+        break;
+      }
+    }
+    const afterTs = this.syncAfter ? Math.floor(new Date(this.syncAfter).getTime() / 1e3) : 0;
+    const filtered = afterTs ? all.filter((m) => m.createdTs >= afterTs) : all;
+    this.logger.debug(`Fetched ${filtered.length} memos`);
+    return filtered.sort((a, b) => b.createdTs - a.createdTs);
+  }
+  /**
+   * Public URL of a v0.21 resource attachment.
+   * Pattern: {base}o/r/{id}/{publicId || filename}
+   */
+  resourceUrl(resource) {
+    var _a2;
+    if (resource.externalLink)
+      return resource.externalLink;
+    const fileId = (_a2 = resource.publicId) != null ? _a2 : resource.filename;
+    return `${this.base()}o/r/${resource.id}/${encodeURIComponent(fileId)}`;
+  }
+  /**
+   * Download a resource attachment as binary data.
+   */
   async downloadResource(resource) {
+    const url = this.resourceUrl(resource);
+    this.logger.debug("Downloading resource:", url);
     try {
-      const attachmentId = resource.name.split("/").pop() || resource.name;
-      const resourceUrl = `${this.apiUrl.replace("/api/v1", "")}/file/attachments/${attachmentId}/${encodeURIComponent(resource.filename)}`;
-      this.logger.debug(`\u6B63\u5728\u4E0B\u8F7D\u8D44\u6E90: ${resourceUrl}`);
       const response = await (0, import_obsidian3.requestUrl)({
-        url: resourceUrl,
-        headers: {
-          "Authorization": `Bearer ${this.accessToken}`,
-          "Accept": "*/*"
-        },
-        method: "GET"
+        url,
+        headers: { Authorization: `Bearer ${this.accessToken}` }
       });
       if (response.status !== 200) {
-        this.logger.error(`\u4E0B\u8F7D\u8D44\u6E90\u5931\u8D25: ${response.status}`);
-        this.logger.error(`\u54CD\u5E94\u5185\u5BB9: ${response.text}`);
+        this.logger.warn(`Resource download failed (${response.status}): ${url}`);
         return null;
       }
-      if ("arrayBuffer" in response && response.arrayBuffer) {
-        this.logger.debug(`\u6210\u529F\u83B7\u53D6\u8D44\u6E90\uFF0C\u5927\u5C0F: ${response.arrayBuffer.byteLength} \u5B57\u8282`);
+      if (response.arrayBuffer) {
         return response.arrayBuffer;
-      } else {
-        this.logger.warn("\u54CD\u5E94\u4E2D\u6CA1\u6709 arrayBuffer \u5C5E\u6027");
-        return null;
       }
-    } catch (error) {
-      this.logger.error("\u4E0B\u8F7D\u8D44\u6E90\u65F6\u51FA\u9519:", error);
+      this.logger.warn("No arrayBuffer in response for:", url);
       return null;
+    } catch (error) {
+      this.logger.error("Resource download error:", error);
+      return null;
+    }
+  }
+  /**
+   * Validate connection by fetching one memo. Returns true on success.
+   */
+  async testConnection() {
+    try {
+      const response = await (0, import_obsidian3.requestUrl)({
+        url: `${this.base()}api/v1/memo?rowStatus=NORMAL&limit=1`,
+        headers: this.headers()
+      });
+      return response.status === 200;
+    } catch (e) {
+      return false;
     }
   }
 };
@@ -6890,13 +6902,14 @@ var FileService = class {
     this.memosService = memosService;
     this.logger = new Logger("FileService");
   }
-  formatDateTime(date, format = "display") {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    const seconds = String(date.getSeconds()).padStart(2, "0");
+  formatDateTime(ts, format = "display") {
+    const d = new Date(ts * 1e3);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const seconds = String(d.getSeconds()).padStart(2, "0");
     if (format === "filename") {
       return `${year}-${month}-${day} ${hours}-${minutes}`;
     }
@@ -6916,14 +6929,10 @@ var FileService = class {
       i++;
     }
     const goBack = fromParts.length - i;
-    const relativePath = [
-      ...Array(goBack).fill(".."),
-      ...toParts.slice(i)
-    ].join("/");
-    return relativePath;
+    return [...Array(goBack).fill(".."), ...toParts.slice(i)].join("/");
   }
   isImageFile(filename) {
-    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"];
+    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"];
     const ext = filename.toLowerCase().split(".").pop();
     return ext ? imageExtensions.includes(`.${ext}`) : false;
   }
@@ -6934,12 +6943,10 @@ var FileService = class {
   }
   getContentPreview(content) {
     let preview = content.replace(/^>\s*\[!.*?\].*$/gm, "").replace(/^>\s.*$/gm, "").replace(/^\s*#\s+/gm, "").replace(/[_*~`]|_{2,}|\*{2,}|~{2,}/g, "").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/!\[([^\]]*)\]\([^)]*\)/g, "").replace(/\n+/g, " ").trim();
-    if (!preview) {
+    if (!preview)
       return "Untitled";
-    }
-    if (preview.length > 50) {
+    if (preview.length > 50)
       preview = `${preview.slice(0, 50)}...`;
-    }
     return preview;
   }
   async getMemoFiles() {
@@ -6947,9 +6954,8 @@ var FileService = class {
     const processDirectory = async (dirPath) => {
       const items = await this.vault.adapter.list(dirPath);
       for (const file of items.files) {
-        if (file.endsWith(".md")) {
+        if (file.endsWith(".md"))
           files.push(file);
-        }
       }
       for (const dir of items.folders) {
         await processDirectory(dir);
@@ -6963,40 +6969,39 @@ var FileService = class {
       const files = await this.getMemoFiles();
       for (const file of files) {
         const content = await this.vault.adapter.read(file);
-        if (content.includes(`> - ID: ${memoId}`)) {
+        if (content.includes(`memo_id: ${memoId}`))
           return true;
-        }
       }
       return false;
     } catch (error) {
-      this.logger.error("\u68C0\u67E5 memo \u662F\u5426\u5B58\u5728\u65F6\u51FA\u9519:", error instanceof Error ? error.message : String(error));
+      this.logger.error("Error checking memo existence:", error instanceof Error ? error.message : String(error));
       return false;
     }
   }
   async saveMemoToFile(memo) {
+    var _a2;
     try {
-      const exists = await this.isMemoExists(memo.name);
-      if (exists) {
-        this.logger.debug(`Memo ${memo.name} \u5DF2\u5B58\u5728\uFF0C\u8DF3\u8FC7`);
+      if (await this.isMemoExists(memo.id)) {
+        this.logger.debug(`Memo ${memo.id} already exists, skipping`);
         return;
       }
-      const date = new Date(memo.createTime);
+      const date = new Date(memo.createdTs * 1e3);
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, "0");
       const yearDir = `${this.syncDirectory}/${year}`;
       const monthDir = `${yearDir}/${month}`;
+      await this.ensureDirectoryExists(this.syncDirectory);
       await this.ensureDirectoryExists(yearDir);
       await this.ensureDirectoryExists(monthDir);
-      const contentPreview = memo.content ? this.getContentPreview(memo.content) : this.sanitizeFileName(memo.name.replace("memos/", ""));
-      const timeStr = this.formatDateTime(date, "filename");
+      const contentPreview = memo.content ? this.getContentPreview(memo.content) : String(memo.id);
+      const timeStr = this.formatDateTime(memo.createdTs, "filename");
       const fileName = this.sanitizeFileName(`${contentPreview} (${timeStr}).md`);
       const filePath = `${monthDir}/${fileName}`;
-      let content = memo.content || "";
-      content = content.replace(/\#([^\#\s]+)\#/g, "#$1");
+      let content = (memo.content || "").replace(/#([^#\s]+)#/g, "#$1");
       let documentContent = content;
-      if (memo.attachments && memo.attachments.length > 0) {
-        const images = memo.attachments.filter((r) => this.isImageFile(r.filename));
-        const otherFiles = memo.attachments.filter((r) => !this.isImageFile(r.filename));
+      if (((_a2 = memo.resourceList) == null ? void 0 : _a2.length) > 0) {
+        const images = memo.resourceList.filter((r) => this.isImageFile(r.filename));
+        const otherFiles = memo.resourceList.filter((r) => !this.isImageFile(r.filename));
         if (images.length > 0) {
           documentContent += "\n\n";
           for (const image of images) {
@@ -7004,11 +7009,14 @@ var FileService = class {
             if (resourceData) {
               const resourceDir = `${monthDir}/resources`;
               await this.ensureDirectoryExists(resourceDir);
-              const localFilename = `${image.name.split("/").pop()}_${this.sanitizeFileName(image.filename)}`;
+              const localFilename = `${image.id}_${this.sanitizeFileName(image.filename)}`;
               const localPath = `${resourceDir}/${localFilename}`;
               await this.vault.adapter.writeBinary(localPath, resourceData);
               const relativePath = this.getRelativePath(filePath, localPath);
               documentContent += `![${image.filename}](${relativePath})
+`;
+            } else {
+              documentContent += `![${image.filename}](${this.memosService.resourceUrl(image)})
 `;
             }
           }
@@ -7020,52 +7028,50 @@ var FileService = class {
             if (resourceData) {
               const resourceDir = `${monthDir}/resources`;
               await this.ensureDirectoryExists(resourceDir);
-              const localFilename = `${file.name.split("/").pop()}_${this.sanitizeFileName(file.filename)}`;
+              const localFilename = `${file.id}_${this.sanitizeFileName(file.filename)}`;
               const localPath = `${resourceDir}/${localFilename}`;
               await this.vault.adapter.writeBinary(localPath, resourceData);
               const relativePath = this.getRelativePath(filePath, localPath);
               documentContent += `- [${file.filename}](${relativePath})
 `;
+            } else {
+              documentContent += `- [${file.filename}](${this.memosService.resourceUrl(file)})
+`;
             }
           }
         }
       }
-      const tags = (memo.content || "").match(/\#([^\#\s]+)(?:\#|\s|$)/g) || [];
-      const cleanTags = tags.map((tag) => tag.replace(/^\#|\#$/g, "").trim());
+      const tags = (memo.content || "").match(/#([^#\s]+)(?:#|\s|$)/g) || [];
+      const cleanTags = tags.map((tag) => tag.replace(/^#|#$/g, "").trim());
       documentContent += "\n\n---\n";
       documentContent += "> [!note]- Memo Properties\n";
-      documentContent += `> - Created: ${this.formatDateTime(new Date(memo.createTime))}
+      documentContent += `> - Created: ${this.formatDateTime(memo.createdTs)}
 `;
-      documentContent += `> - Updated: ${this.formatDateTime(new Date(memo.updateTime))}
+      documentContent += `> - Updated: ${this.formatDateTime(memo.updatedTs)}
 `;
       documentContent += "> - Type: memo\n";
       if (cleanTags.length > 0) {
         documentContent += `> - Tags: [${cleanTags.join(", ")}]
 `;
       }
-      documentContent += `> - ID: ${memo.name}
+      documentContent += `> - memo_id: ${memo.id}
 `;
       documentContent += `> - Visibility: ${memo.visibility.toLowerCase()}
 `;
-      try {
-        const exists2 = await this.vault.adapter.exists(filePath);
-        if (exists2) {
-          const abstractFile = this.vault.getAbstractFileByPath(filePath);
-          if (abstractFile instanceof import_obsidian4.TFile) {
-            await this.vault.modify(abstractFile, documentContent);
-          } else {
-            throw new Error("Invalid file type");
-          }
-        } else {
-          await this.vault.create(filePath, documentContent);
+      if (memo.pinned)
+        documentContent += "> - Pinned: true\n";
+      const exists = await this.vault.adapter.exists(filePath);
+      if (exists) {
+        const abstractFile = this.vault.getAbstractFileByPath(filePath);
+        if (abstractFile instanceof import_obsidian4.TFile) {
+          await this.vault.modify(abstractFile, documentContent);
         }
-      } catch (error) {
-        console.error(`Failed to save memo to file: ${filePath}`, error);
-        throw new Error(`Failed to save memo: ${error.message}`);
+      } else {
+        await this.vault.create(filePath, documentContent);
       }
     } catch (error) {
-      this.logger.error("\u4FDD\u5B58 memo \u5230\u6587\u4EF6\u65F6\u51FA\u9519:", error instanceof Error ? error.message : String(error));
-      throw new Error(`\u4FDD\u5B58 memo \u5931\u8D25: ${error instanceof Error ? error.message : String(error)}`);
+      this.logger.error("Error saving memo:", error instanceof Error ? error.message : String(error));
+      throw new Error(`Failed to save memo ${memo.id}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 };
@@ -7205,7 +7211,7 @@ ${digest}
   groupMemosByWeek(memos) {
     const groups = {};
     for (const memo of memos) {
-      const date = new Date(memo.createTime);
+      const date = new Date(memo.createdTs * 1e3);
       const year = date.getFullYear();
       const week = this.getWeekNumber(date);
       const key = `${year}-W${week.toString().padStart(2, "0")}`;
@@ -7329,7 +7335,7 @@ var MemosSyncPlugin = class extends import_obsidian6.Plugin {
     this.statusService = new StatusService(statusBarItem);
     this.initializeServices();
     this.addSettingTab(new MemosSyncSettingTab(this.app, this));
-    this.addRibbonIcon("sync", "Sync Memos", async () => {
+    this.addRibbonIcon("sync", "Sync Memos AI Sync+", async () => {
       await this.syncMemos();
     });
     if (this.settings.syncFrequency === "auto") {
@@ -7340,7 +7346,8 @@ var MemosSyncPlugin = class extends import_obsidian6.Plugin {
     this.memosService = new MemosService(
       this.settings.memosApiUrl,
       this.settings.memosAccessToken,
-      this.settings.syncLimit
+      this.settings.syncLimit,
+      this.settings.syncAfter
     );
     let aiService = null;
     if (this.settings.ai.enabled) {

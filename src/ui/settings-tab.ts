@@ -16,13 +16,13 @@ export class MemosSyncSettingTab extends PluginSettingTab {
         containerEl.empty();
 
         new Setting(containerEl)
-            .setName('Memos API URL')
-            .setDesc('您的 Memos 服务器 API 地址,格式如：https://memose.com/api/v1 ')
+            .setName('Memos URL')
+            .setDesc('Memos server base URL, e.g. https://demo.usememos.com/')
             .addText(text => text
-                .setPlaceholder('https://x.com/api/v1')
+                .setPlaceholder('https://demo.usememos.com/')
                 .setValue(this.plugin.settings.memosApiUrl)
                 .onChange(async (value) => {
-                    this.plugin.settings.memosApiUrl = value;
+                    this.plugin.settings.memosApiUrl = value.trim();
                     await this.plugin.saveSettings();
                 }));
 
@@ -79,10 +79,10 @@ export class MemosSyncSettingTab extends PluginSettingTab {
         }
 
         new Setting(containerEl)
-            .setName('同步条数')
-            .setDesc('每次同步的最大条目数')
+            .setName('Sync limit')
+            .setDesc('Maximum number of memos to fetch per sync.')
             .addText(text => text
-                .setPlaceholder('例如：100')
+                .setPlaceholder('1000')
                 .setValue(String(this.plugin.settings.syncLimit))
                 .onChange(async (value) => {
                     const limit = Number.parseInt(value, 10);
@@ -92,7 +92,18 @@ export class MemosSyncSettingTab extends PluginSettingTab {
                     }
                 }));
 
-        // AI 功能设置
+        new Setting(containerEl)
+            .setName('Sync after date')
+            .setDesc('Only sync memos created on or after this date (YYYY-MM-DD). Leave empty to sync all.')
+            .addText(text => text
+                .setPlaceholder('2024-01-01')
+                .setValue(this.plugin.settings.syncAfter)
+                .onChange(async (value) => {
+                    this.plugin.settings.syncAfter = value.trim();
+                    await this.plugin.saveSettings();
+                }));
+
+        // AI features
         new Setting(containerEl)
             .setName('启用 AI 功能')
             .setDesc('开启或关闭 AI 增强功能')

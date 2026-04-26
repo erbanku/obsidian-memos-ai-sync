@@ -12,7 +12,7 @@ if you want to view the source, please visit the github repository of this plugi
 const prod = (process.argv[2] === "production");
 
 // 需要排除的 Node.js 内置模块，但保留 AI 库可能需要的模块
-const nodeBuiltins = builtins.filter(mod => 
+const nodeBuiltins = builtins.filter(mod =>
     !['crypto', 'path', 'fs', 'os', 'util'].includes(mod)
 );
 

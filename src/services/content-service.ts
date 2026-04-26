@@ -52,12 +52,12 @@ export class ContentService {
     private extractTitle(content: string): string | null {
         const lines = content.split('\n');
         const firstLine = lines[0].trim();
-        
+
         // 如果第一行是标题格式（# 开头），提取标题文本
         if (firstLine.startsWith('# ')) {
             return firstLine.slice(2).trim();
         }
-        
+
         return null;
     }
 
@@ -89,10 +89,10 @@ export class ContentService {
         }
 
         const weekGroups = this.groupMemosByWeek(suitableMemos);
-        
+
         for (const [weekKey, weekMemos] of Object.entries(weekGroups)) {
             const [year, week] = weekKey.split('-W');
-            
+
             if (await this.weeklyDigestExists(year, week)) {
                 continue;
             }
@@ -102,11 +102,11 @@ export class ContentService {
 
             const contents = weekMemos.map(memo => memo.content);
             const digest = await this.aiService.generateWeeklyDigest(contents);
-            
+
             if (digest?.trim()) {
                 const weeklyContent = this.formatWeeklyDigest(digest, year, week, weekMemos.length);
                 const weeklyDigestPath = this.getWeeklyDigestPath(year, week);
-                
+
                 try {
                     await this.vault.create(weeklyDigestPath, weeklyContent);
                 } catch (error) {
@@ -144,17 +144,17 @@ ${digest}
         const firstDayOfYear = new Date(year, 0, 1);
         const daysToFirstMonday = (8 - firstDayOfYear.getDay()) % 7;
         const firstMonday = new Date(year, 0, 1 + daysToFirstMonday);
-        
+
         const weekStart = new Date(firstMonday);
         weekStart.setDate(firstMonday.getDate() + (week - 1) * 7);
-        
+
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6);
-        
+
         const formatDate = (date: Date): string => {
             return `${date.getMonth() + 1}月${date.getDate()}日`;
         };
-        
+
         return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
     }
 
@@ -162,7 +162,7 @@ ${digest}
         const groups: { [key: string]: MemoItem[] } = {};
 
         for (const memo of memos) {
-            const date = new Date(memo.createTime);
+            const date = new Date(memo.createdTs * 1000);
             const year = date.getFullYear();
             const week = this.getWeekNumber(date);
             const key = `${year}-W${week.toString().padStart(2, '0')}`;
@@ -183,4 +183,4 @@ ${digest}
         const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
         return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     }
-} 
+}

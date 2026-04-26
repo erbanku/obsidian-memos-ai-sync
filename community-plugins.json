@@ -1,7 +1,7 @@
 {
-    "id": "memos-ai-sync",
-    "name": "Memos AI Sync",
-    "author": "leoleelxh",
+    "id": "memos-ai-sync-plus",
+    "name": "Memos AI Sync+",
+    "author": "erbanku",
     "description": "Sync Memos content with AI enhancement",
-    "repo": "leoleelxh/obsidian-memos-ai-sync"
-} 
+    "repo": "erbanku/obsidian-memos-ai-sync-plus"
+}
