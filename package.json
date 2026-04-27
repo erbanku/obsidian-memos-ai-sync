@@ -2,7 +2,6 @@
   "name": "obsidian-memos-sync",
   "version": "1.0.3",
   "description": "Sync Memos content to Obsidian",
-  "packageManager": "npm@10",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
