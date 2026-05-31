@@ -1,4 +1,4 @@
-# Memos AI Sync+
+# Memos AI Sync Plus
 
 A fork of [leoleelxh/obsidian-memos-ai-sync](https://github.com/leoleelxh/obsidian-memos-ai-sync) by [erbanku](https://github.com/erbanku), updated to support **Memos v0.21 and earlier** API.
 
