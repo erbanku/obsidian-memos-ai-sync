@@ -1,5 +1,5 @@
 import { Plugin } from 'obsidian';
-import type { MemosPluginSettings } from 'src/models/settings';
+import type { MemosPluginSettings, UiLanguage } from 'src/models/settings';
 import { DEFAULT_SETTINGS } from 'src/models/settings';
 import { MemosSyncSettingTab } from 'src/ui/settings-tab';
 import { MemosService } from 'src/services/memos-service';
@@ -8,6 +8,7 @@ import { ContentService } from 'src/services/content-service';
 import { StatusService } from 'src/services/status-service';
 import type { AIService } from 'src/services/ai-service';
 import { createAIService, createDummyAIService } from 'src/services/ai-service';
+import { t } from 'src/i18n';
 
 export default class MemosSyncPlugin extends Plugin {
     settings: MemosPluginSettings;
@@ -19,9 +20,8 @@ export default class MemosSyncPlugin extends Plugin {
     async onload() {
         await this.loadSettings();
 
-        // 创建状态栏项
         const statusBarItem = this.addStatusBarItem();
-        this.statusService = new StatusService(statusBarItem);
+        this.statusService = new StatusService(statusBarItem, this.settings.uiLanguage);
 
         this.initializeServices();
 
@@ -47,19 +47,17 @@ export default class MemosSyncPlugin extends Plugin {
         let aiService: AIService | null = null;
         if (this.settings.ai.enabled) {
             try {
-                // 如果选择了自定义模型，使用自定义模型名称
                 const modelName = this.settings.ai.modelName === 'custom'
                     ? this.settings.ai.customModelName
                     : this.settings.ai.modelName;
 
-                // 对于 Ollama，使用 ollamaBaseUrl 作为 apiKey
                 const apiKey = this.settings.ai.modelType === 'ollama'
                     ? this.settings.ai.ollamaBaseUrl
                     : this.settings.ai.apiKey;
 
                 if (this.settings.ai.modelType !== 'ollama' && !apiKey) {
                     aiService = createDummyAIService();
-                    this.statusService.setWarning('AI 服务需要配置 API 密钥，请在设置中完成配置');
+                    this.statusService.setWarning(t(this.settings.uiLanguage, 'main.aiKeyRequired'));
                 } else {
                     aiService = createAIService(
                         this.settings.ai.modelType,
@@ -70,8 +68,7 @@ export default class MemosSyncPlugin extends Plugin {
                 }
             } catch (error) {
                 console.error('Failed to initialize AI service:', error);
-                this.statusService.setWarning('AI 服务初始化失败，请检查配置');
-                // 不禁用 AI 功能，使用空服务
+                this.statusService.setWarning(t(this.settings.uiLanguage, 'main.aiInitFailed'));
                 aiService = createDummyAIService();
             }
         }
@@ -82,6 +79,7 @@ export default class MemosSyncPlugin extends Plugin {
             this.settings.ai.intelligentSummary,
             this.settings.ai.autoTags,
             this.settings.ai.summaryLanguage,
+            this.settings.uiLanguage,
             this.app.vault,
             this.settings.syncDirectory
         );
@@ -89,17 +87,18 @@ export default class MemosSyncPlugin extends Plugin {
         this.fileService = new FileService(
             this.app.vault,
             this.settings.syncDirectory,
-            this.memosService
+            this.memosService,
+            this.settings.uiLanguage
         );
     }
 
     async syncMemos() {
         try {
             if (!this.settings.memosApiUrl) {
-                throw new Error('未配置 Memos API URL');
+                throw new Error(t(this.settings.uiLanguage, 'main.missingMemosUrl'));
             }
             if (!this.settings.memosAccessToken) {
-                throw new Error('未配置访问令牌');
+                throw new Error(t(this.settings.uiLanguage, 'main.missingAccessToken'));
             }
 
             this.statusService.startSync(0);
@@ -116,19 +115,21 @@ export default class MemosSyncPlugin extends Plugin {
             }
 
             if (this.settings.ai.enabled && this.settings.ai.weeklyDigest) {
-                this.statusService.updateProgress(syncCount, '正在生成每周总结...');
+                this.statusService.updateProgress(syncCount, t(this.settings.uiLanguage, 'main.generatingWeeklyDigest'));
                 await this.contentService.generateWeeklyDigest(memos);
             }
 
-            this.statusService.setSuccess(`同步完成，共同步 ${syncCount} 条记录`);
+            this.statusService.setSuccess(t(this.settings.uiLanguage, 'main.syncCompleted', { count: syncCount }));
         } catch (error) {
-            console.error('同步失败:', error);
-            this.statusService.setError(error.message);
+            console.error('Sync failed:', error);
+            this.statusService.setError(error instanceof Error ? error.message : String(error));
         }
     }
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        this.settings.uiLanguage = this.normalizeUiLanguage(this.settings.uiLanguage);
+        this.settings.ai.summaryLanguage = this.normalizeSummaryLanguage(this.settings.ai.summaryLanguage);
     }
 
     async saveSettings() {
@@ -139,5 +140,33 @@ export default class MemosSyncPlugin extends Plugin {
     private initializeAutoSync() {
         const interval = this.settings.autoSyncInterval * 60 * 1000;
         setInterval(() => { void this.syncMemos(); }, interval);
+    }
+
+    private normalizeSummaryLanguage(language: unknown): MemosPluginSettings['ai']['summaryLanguage'] {
+        const normalized = this.normalizeUiLanguage(language);
+        return normalized;
+    }
+
+    private normalizeUiLanguage(language: unknown): UiLanguage {
+        if (typeof language !== 'string') {
+            return 'en-US';
+        }
+
+        const legacyMap: Record<string, UiLanguage> = {
+            zh: 'zh-CN',
+            en: 'en-US',
+            tr: 'tr-TR',
+            ja: 'ja-JP',
+            ko: 'en-US'
+        };
+        if (legacyMap[language]) {
+            return legacyMap[language];
+        }
+
+        if (language === 'en-US' || language === 'zh-CN' || language === 'tr-TR' || language === 'ja-JP') {
+            return language;
+        }
+
+        return 'en-US';
     }
 }

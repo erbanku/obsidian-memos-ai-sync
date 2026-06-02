@@ -3,6 +3,8 @@
 export type RowStatus = 'NORMAL' | 'ARCHIVED' | 'DELETED';
 export type Visibility = 'PRIVATE' | 'PROTECTED' | 'PUBLIC';
 export type AIModelType = 'openai' | 'gemini' | 'claude' | 'ollama';
+export type SummaryLanguage = 'en-US' | 'zh-CN' | 'tr-TR' | 'ja-JP';
+export type UiLanguage = SummaryLanguage;
 
 // v0.21 resource (attachment)
 export interface MemoResource {
@@ -39,7 +41,7 @@ export interface AISettings {
     weeklyDigest: boolean;
     autoTags: boolean;
     intelligentSummary: boolean;
-    summaryLanguage: 'zh' | 'en' | 'ja' | 'ko';
+    summaryLanguage: SummaryLanguage;
 }
 
 // Plugin settings
@@ -47,6 +49,7 @@ export interface MemosPluginSettings {
     // Base URL of the Memos instance, e.g. https://demo.usememos.com/
     memosApiUrl: string;
     memosAccessToken: string;
+    uiLanguage: UiLanguage;
     syncDirectory: string;
     syncFrequency: 'manual' | 'auto';
     autoSyncInterval: number;
@@ -59,6 +62,7 @@ export interface MemosPluginSettings {
 export const DEFAULT_SETTINGS: MemosPluginSettings = {
     memosApiUrl: '',
     memosAccessToken: '',
+    uiLanguage: 'en-US',
     syncDirectory: 'memos',
     syncFrequency: 'manual',
     autoSyncInterval: 30,
@@ -75,6 +79,6 @@ export const DEFAULT_SETTINGS: MemosPluginSettings = {
         weeklyDigest: true,
         autoTags: true,
         intelligentSummary: true,
-        summaryLanguage: 'zh'
+        summaryLanguage: 'en-US'
     }
 };

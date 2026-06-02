@@ -1,6 +1,7 @@
 import type { AIService } from './ai-service';
-import type { MemoItem } from '../models/settings';
+import type { MemoItem, SummaryLanguage, UiLanguage } from '../models/settings';
 import type { Vault } from 'obsidian';
+import { formatLocaleDateTime, formatMonthDay, t } from '../i18n';
 
 export class ContentService {
     constructor(
@@ -8,7 +9,8 @@ export class ContentService {
         private aiEnabled: boolean,
         private enableSummary: boolean,
         private enableTags: boolean,
-        private summaryLanguage: string,
+        private summaryLanguage: SummaryLanguage,
+        private uiLanguage: UiLanguage,
         private vault: Vault,
         private syncDirectory: string
     ) {}
@@ -33,14 +35,14 @@ export class ContentService {
             if (this.enableSummary) {
                 const summary = await this.aiService.generateSummary(content, this.summaryLanguage);
                 if (summary?.trim()) {
-                    processedContent += `> [!abstract]+ 内容摘要\n> ${summary.replace(/\n/g, '\n> ')}\n\n`;
+                    processedContent += `> [!abstract]+ ${t(this.uiLanguage, 'content.summaryHeading')}\n> ${summary.replace(/\n/g, '\n> ')}\n\n`;
                 }
             }
 
             if (this.enableTags) {
-                const tags = await this.aiService.generateTags(content);
+                const tags = await this.aiService.generateTags(content, this.summaryLanguage);
                 if (tags?.length > 0) {
-                    processedContent += `> [!info]- 相关标签\n> ${tags.map(tag => `#${tag}`).join(' ')}\n\n`;
+                    processedContent += `> [!info]- ${t(this.uiLanguage, 'content.tagsHeading')}\n> ${tags.map(tag => `#${tag}`).join(' ')}\n\n`;
                 }
             }
         }
@@ -53,7 +55,6 @@ export class ContentService {
         const lines = content.split('\n');
         const firstLine = lines[0].trim();
 
-        // 如果第一行是标题格式（# 开头），提取标题文本
         if (firstLine.startsWith('# ')) {
             return firstLine.slice(2).trim();
         }
@@ -68,7 +69,7 @@ export class ContentService {
 
     private getWeeklyDigestPath(year: string, week: string): string {
         const weeklyDigestDir = `${this.syncDirectory}/${year}/weekly`;
-        const fileName = `第${week}周总结.md`;
+        const fileName = t(this.uiLanguage, 'content.weeklyFileName', { week });
         return `${weeklyDigestDir}/${fileName}`;
     }
 
@@ -101,7 +102,7 @@ export class ContentService {
             await this.ensureDirectoryExists(weeklyDigestDir);
 
             const contents = weekMemos.map(memo => memo.content);
-            const digest = await this.aiService.generateWeeklyDigest(contents);
+            const digest = await this.aiService.generateWeeklyDigest(contents, this.summaryLanguage);
 
             if (digest?.trim()) {
                 const weeklyContent = this.formatWeeklyDigest(digest, year, week, weekMemos.length);
@@ -110,7 +111,7 @@ export class ContentService {
                 try {
                     await this.vault.create(weeklyDigestPath, weeklyContent);
                 } catch (error) {
-                    console.error(`生成第 ${week} 周总结失败:`, error);
+                    console.error(`Failed to generate weekly digest for week ${week}:`, error);
                 }
             }
         }
@@ -118,24 +119,24 @@ export class ContentService {
 
     private formatWeeklyDigest(digest: string, year: string, week: string, memoCount: number): string {
         const weekRange = this.getWeekDateRange(Number.parseInt(year, 10), Number.parseInt(week, 10));
-        return `# 📅 第 ${week} 周回顾 (${weekRange})
+        return `# ${t(this.uiLanguage, 'content.weeklyTitle', { week, range: weekRange })}
 
-## 🌟 本周亮点
+## ${t(this.uiLanguage, 'content.highlights')}
 
 ${digest}
 
-## 📊 统计数据
+## ${t(this.uiLanguage, 'content.stats')}
 
-- 📝 记录数量：${memoCount} 条
-- 📅 时间范围：${weekRange}
+- ${t(this.uiLanguage, 'content.memoCount', { count: memoCount })}
+- ${t(this.uiLanguage, 'content.timeRange', { range: weekRange })}
 
-## 💪 下周展望
+## ${t(this.uiLanguage, 'content.nextWeekOutlook')}
 
-> [!quote] 激励语录
-> 每一个当下都是未来的起点，让我们继续前行，创造更多精彩！
+> [!quote] ${t(this.uiLanguage, 'content.quoteTitle')}
+> ${t(this.uiLanguage, 'content.quoteText')}
 
 ---
-*生成时间：${new Date().toLocaleString('zh-CN', { hour12: false })}*
+*${t(this.uiLanguage, 'content.generatedAt', { time: formatLocaleDateTime(this.uiLanguage, new Date()) })}*
 
 `;
     }
@@ -152,7 +153,7 @@ ${digest}
         weekEnd.setDate(weekStart.getDate() + 6);
 
         const formatDate = (date: Date): string => {
-            return `${date.getMonth() + 1}月${date.getDate()}日`;
+            return formatMonthDay(this.uiLanguage, date);
         };
 
         return `${formatDate(weekStart)} - ${formatDate(weekEnd)}`;
