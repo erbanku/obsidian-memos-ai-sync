@@ -1,8 +1,9 @@
 import { TFile } from 'obsidian';
 import type { Vault } from 'obsidian';
-import type { MemoItem } from '../models/settings';
+import type { MemoItem, UiLanguage } from '../models/settings';
 import type { MemosService } from './memos-service';
 import { Logger } from './logger';
+import { t } from '../i18n';
 
 export class FileService {
     private logger: Logger;
@@ -10,7 +11,8 @@ export class FileService {
     constructor(
         private vault: Vault,
         private syncDirectory: string,
-        private memosService: MemosService
+        private memosService: MemosService,
+        private uiLanguage: UiLanguage
     ) {
         this.logger = new Logger('FileService');
     }
@@ -166,7 +168,7 @@ export class FileService {
                 }
 
                 if (otherFiles.length > 0) {
-                    documentContent += '\n\n### Attachments\n';
+                    documentContent += `\n\n### ${t(this.uiLanguage, 'file.attachments')}\n`;
                     for (const file of otherFiles) {
                         const resourceData = await this.memosService.downloadResource(file);
                         if (resourceData) {
@@ -188,16 +190,16 @@ export class FileService {
             const cleanTags = tags.map(tag => tag.replace(/^#|#$/g, '').trim());
 
             documentContent += '\n\n---\n';
-            documentContent += '> [!note]- Memo Properties\n';
-            documentContent += `> - Created: ${this.formatDateTime(memo.createdTs)}\n`;
-            documentContent += `> - Updated: ${this.formatDateTime(memo.updatedTs)}\n`;
-            documentContent += '> - Type: memo\n';
+            documentContent += `> [!note]- ${t(this.uiLanguage, 'file.memoProperties')}\n`;
+            documentContent += `> - ${t(this.uiLanguage, 'file.created')}: ${this.formatDateTime(memo.createdTs)}\n`;
+            documentContent += `> - ${t(this.uiLanguage, 'file.updated')}: ${this.formatDateTime(memo.updatedTs)}\n`;
+            documentContent += `> - ${t(this.uiLanguage, 'file.type')}: memo\n`;
             if (cleanTags.length > 0) {
-                documentContent += `> - Tags: [${cleanTags.join(', ')}]\n`;
+                documentContent += `> - ${t(this.uiLanguage, 'file.tags')}: [${cleanTags.join(', ')}]\n`;
             }
             documentContent += `> - memo_id: ${memo.id}\n`;
-            documentContent += `> - Visibility: ${memo.visibility.toLowerCase()}\n`;
-            if (memo.pinned) documentContent += '> - Pinned: true\n';
+            documentContent += `> - ${t(this.uiLanguage, 'file.visibility')}: ${memo.visibility.toLowerCase()}\n`;
+            if (memo.pinned) documentContent += `> - ${t(this.uiLanguage, 'file.pinned')}: true\n`;
 
             const exists = await this.vault.adapter.exists(filePath);
             if (exists) {

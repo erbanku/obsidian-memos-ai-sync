@@ -25,6 +25,7 @@ Original plugin by [leoleelxh](https://github.com/leoleelxh):
 
 | Setting | Description |
 |---|---|
+| UI language | Plugin UI language (English (US), Chinese (Simplified), Turkish, Japanese). Default: `English (US)` |
 | Memos URL | Base URL of your Memos instance, e.g. `https://demo.usememos.com/` |
 | Access token | Personal access token from Memos Settings |
 | Sync directory | Vault folder where notes are saved (default: `memos`) |

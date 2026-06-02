@@ -1,16 +1,20 @@
 import { Notice, setIcon } from 'obsidian';
+import type { UiLanguage } from '../models/settings';
+import { t } from '../i18n';
 
 type SyncStatus = 'idle' | 'syncing' | 'error' | 'success' | 'warning';
 
 export class StatusService {
     private statusBarItem: HTMLElement;
+    private uiLanguage: UiLanguage;
     private currentStatus: SyncStatus = 'idle';
     private syncStartTime = 0;
     private progressCount = 0;
     private totalCount = 0;
 
-    constructor(statusBarItem: HTMLElement) {
+    constructor(statusBarItem: HTMLElement, uiLanguage: UiLanguage) {
         this.statusBarItem = statusBarItem;
+        this.uiLanguage = uiLanguage;
         this.updateStatusBar();
     }
 
@@ -23,27 +27,27 @@ export class StatusService {
                 icon = 'sync';
                 const progress = this.totalCount ? ` ${this.progressCount}/${this.totalCount}` : '';
                 const elapsed = this.syncStartTime ? ` (${Math.round((Date.now() - this.syncStartTime) / 1000)}s)` : '';
-                text = `Syncing${progress}${elapsed}`;
+                text = `${t(this.uiLanguage, 'status.syncing')}${progress}${elapsed}`;
                 break;
             }
             case 'error': {
                 icon = 'alert-circle';
-                text = 'Sync failed';
+                text = t(this.uiLanguage, 'status.syncFailed');
                 break;
             }
             case 'success': {
                 icon = 'check-circle';
-                text = 'Sync complete';
+                text = t(this.uiLanguage, 'status.syncComplete');
                 break;
             }
             case 'warning': {
                 icon = 'alert-triangle';
-                text = 'Warning';
+                text = t(this.uiLanguage, 'status.warning');
                 break;
             }
             default: {
                 icon = 'clock';
-                text = 'Idle';
+                text = t(this.uiLanguage, 'status.idle');
             }
         }
 
@@ -67,7 +71,7 @@ export class StatusService {
         this.progressCount = 0;
         this.totalCount = totalItems;
         this.updateStatusBar();
-        new Notice('Syncing memos');
+        new Notice(t(this.uiLanguage, 'notice.syncingMemos'));
     }
 
     updateProgress(current: number, message?: string) {
@@ -81,7 +85,7 @@ export class StatusService {
     setError(error: string) {
         this.currentStatus = 'error';
         this.updateStatusBar();
-        new Notice(`同步失败: ${error}`, 5000);
+        new Notice(t(this.uiLanguage, 'notice.syncFailed', { error }), 5000);
         console.error('Sync failed:', error);
     }
 
@@ -113,5 +117,10 @@ export class StatusService {
             this.currentStatus = 'idle';
             this.updateStatusBar();
         }, 5000);
+    }
+
+    setLanguage(uiLanguage: UiLanguage) {
+        this.uiLanguage = uiLanguage;
+        this.updateStatusBar();
     }
 }
